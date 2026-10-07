@@ -8,6 +8,7 @@ import { useNav } from '../../state/nav'
 import { useProgress } from '../../state/progress'
 import { Flame, IconArrow, IconBack, IconLock, IconPlay, Star } from '../components/Icons'
 import { LevelRing } from '../components/LevelRing'
+import { DailyPlanCard } from '../learn/DailyPlan'
 
 const ease = [0.16, 1, 0.3, 1] as const
 
@@ -65,6 +66,9 @@ export function MapScreen() {
 
       <div className="relative z-10 h-full overflow-y-auto no-scrollbar">
         <div className="mx-auto max-w-xl px-4 pb-[calc(var(--safe-bottom)+60px)] pt-[calc(var(--safe-top)+96px)]">
+          <div className="mb-10">
+            <DailyPlanCard />
+          </div>
           {WORLDS.map((w) => (w.locked ? <LockedWorld key={w.id} w={w} /> : <OpenWorld key={w.id} w={w} onPick={setSheet} />))}
           {badges.length > 0 && (
             <div className="mt-14">

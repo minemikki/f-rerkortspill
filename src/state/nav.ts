@@ -1,6 +1,24 @@
 import { create } from 'zustand'
 
-export type Screen = 'landing' | 'map' | 'play' | 'review'
+export type Screen = 'landing' | 'map' | 'play' | 'review' | 'theory' | 'practice'
+
+/** hash ↔ screen. `practice` carries its control mode ('practice' | 'exam') in scenarioId. */
+function hashFor(screen: Screen, id: string | null) {
+  switch (screen) {
+    case 'review':
+      return '#/faglig'
+    case 'map':
+      return '#/kart'
+    case 'play':
+      return `#/kjor/${id}`
+    case 'theory':
+      return '#/teori'
+    case 'practice':
+      return id === 'exam' ? '#/provekjoring' : '#/ovelse'
+    default:
+      return ''
+  }
+}
 
 interface NavState {
   screen: Screen
@@ -18,6 +36,9 @@ export function initialRoute(): { screen: Screen; scenarioId: string | null } {
   if (typeof location !== 'undefined') {
     if (location.hash === '#/faglig') return { screen: 'review', scenarioId: null }
     if (location.hash === '#/kart') return { screen: 'map', scenarioId: null }
+    if (location.hash === '#/teori') return { screen: 'theory', scenarioId: null }
+    if (location.hash === '#/ovelse') return { screen: 'practice', scenarioId: 'practice' }
+    if (location.hash === '#/provekjoring') return { screen: 'practice', scenarioId: 'exam' }
     const m = location.hash.match(/^#\/kjor\/([\w-]+)$/)
     if (m) return { screen: 'play', scenarioId: m[1] }
   }
@@ -38,7 +59,7 @@ export const useNav = create<NavState>()((set, get) => ({
   },
   _commit: (screen, scenarioId) => {
     set((s) => ({ screen, scenarioId, nonce: s.nonce + 1 }))
-    const hash = screen === 'review' ? '#/faglig' : screen === 'map' ? '#/kart' : screen === 'play' ? `#/kjor/${scenarioId}` : ''
+    const hash = hashFor(screen, scenarioId)
     try {
       history.replaceState(null, '', hash || location.pathname)
     } catch {

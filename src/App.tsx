@@ -5,6 +5,9 @@ import { Landing } from './ui/screens/Landing'
 import { MapScreen } from './ui/screens/MapScreen'
 import { PlayScreen } from './ui/screens/PlayScreen'
 import { ReviewScreen } from './ui/screens/ReviewScreen'
+import { TheoryScreen } from './ui/screens/TheoryScreen'
+
+const PracticeScreen = lazy(() => import('./ui/screens/PracticeScreen').then((m) => ({ default: m.PracticeScreen })))
 
 /**
  * Screen transitions are a yellow road-stripe wipe: the slab covers the
@@ -43,6 +46,12 @@ function Screens() {
         {screen === 'map' && <MapScreen />}
         {screen === 'play' && scenarioId && <PlayScreen scenarioId={scenarioId} />}
         {screen === 'review' && <ReviewScreen />}
+        {screen === 'theory' && <TheoryScreen />}
+        {screen === 'practice' && (
+          <Suspense fallback={<div className="grid h-full place-items-center text-fog">Laster …</div>}>
+            <PracticeScreen mode={scenarioId === 'exam' ? 'exam' : 'practice'} />
+          </Suspense>
+        )}
       </div>
       <AnimatePresence>
         {wiping && (
