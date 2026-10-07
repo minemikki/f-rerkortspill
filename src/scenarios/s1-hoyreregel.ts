@@ -26,7 +26,8 @@ export const s1: ScenarioDef = {
   difficulty: 1,
   mechanics: ['priority', 'choice'],
   completionXp: 25,
-  camera: { kind: 'chase', back: 9.5, up: 4.6, ahead: 9 },
+  // low, close chase cam (driver's-eye feel); the decision step cranes up to show the side road
+  camera: { kind: 'chase', back: 7.4, up: 3.1, ahead: 11, fov: 52 },
   actors: [
     { id: 'player', kind: 'car', path: playerPath, v0: V, program: [{ at: 0, v: V }], color: '#E8E4DA' },
     { id: 'car-right', kind: 'car', path: rightPath, v0: V, program: [{ at: 0, v: V }], color: '#2F5D8A' },
@@ -40,7 +41,8 @@ export const s1: ScenarioDef = {
       program: [{ at: 0, v: 1.3 }],
       variant: 2,
     },
-    { id: 'parked-1', kind: 'car', path: line(-4.4, 16, -4.4, 0), parked: true, color: '#8C2F2A' },
+    // parked at the left kerb, facing the direction of travel on that side
+    { id: 'parked-1', kind: 'car', path: line(-2.05, 26, -2.05, 42), parked: true, color: '#8C2F2A' },
   ],
   steps: [
     {

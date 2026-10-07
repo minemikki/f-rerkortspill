@@ -5,6 +5,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import type { ActorView } from '../engine/sim'
 import { blobTexture } from './textures'
 import { MergeStatic, mat } from './kit'
+import { HATCH, hatchGeos, useHatchMaterials } from './render/vehicles'
 
 /**
  * Stylised low-poly actors. Each model is driven every frame by an
@@ -91,7 +92,7 @@ function useVehicleAnim(get: ViewGetter, parts: React.MutableRefObject<VehiclePa
       p.body.rotation.z = roll.current
     }
     const braking = !parked && (v.a < -0.4 || v.v < 0.05)
-    p.brake.emissiveIntensity = braking ? 2.6 : 0.5
+    p.brake.emissiveIntensity = parked ? 0.02 : braking ? 2.6 : 0.4
     const t = state.clock.elapsedTime
     const on = Math.floor(t * 2.6) % 2 === 0
     const ind = v.indicator
@@ -109,61 +110,46 @@ function lightMats() {
   }
 }
 
-export function Car({ get, color, parked }: { get: ViewGetter; color: string; parked?: boolean }) {
+/** Compact hatchback (procedural, see render/vehicles.tsx). */
+export function Car({ get, color, parked, plate = 'EK 24816' }: { get: ViewGetter; color: string; parked?: boolean; plate?: string }) {
   const parts = useRef<VehicleParts | null>(null)
-  const lm = useMemo(lightMats, [])
-  const body = useMemo(() => paint(color), [color])
+  const g = hatchGeos()
+  const m = useHatchMaterials(color, plate)
   const wheels = useRef<THREE.Object3D[]>([])
   const bodyRef = useRef<THREE.Group>(null)
-  useVehicleAnim(get, parts, 0.34, parked)
+  useVehicleAnim(get, parts, HATCH.wheelR, parked)
   const setWheel = (i: number) => (o: THREE.Object3D | null) => {
     if (o) wheels.current[i] = o
-    parts.current = { wheels: wheels.current, body: bodyRef.current, brake: lm.brake, indL: lm.indL, indR: lm.indR }
+    parts.current = { wheels: wheels.current, body: bodyRef.current, brake: m.brake, indL: m.indL, indR: m.indR }
   }
-  const W = 1.82
-  const L = 4.4
+  const tx = HATCH.track / 2
   return (
     <group>
-      <Blob w={2.5} d={5.2} />
-      <group ref={bodyRef} position-y={0.0}>
-        <MergeStatic>
-        <mesh geometry={rounded(W, 0.72, L, 0.2)} material={body} position-y={0.66} castShadow receiveShadow />
-        {/* cabin glass + roof */}
-        <mesh geometry={rounded(W - 0.18, 0.62, 2.35, 0.22)} material={glass} position={[0, 1.27, -0.25]} castShadow />
-        <mesh geometry={rounded(W - 0.22, 0.1, 2.0, 0.05)} material={body} position={[0, 1.6, -0.3]} castShadow />
-        {/* pillars */}
-        <mesh geometry={box} material={body} position={[0, 1.27, -0.25]} scale={[W - 0.12, 0.5, 0.12]} />
-        {/* bumpers / grille */}
-        <mesh geometry={rounded(W - 0.1, 0.22, 0.2, 0.08)} material={mat('#2a2d31', { rough: 0.6 })} position={[0, 0.42, L / 2 - 0.02]} />
-        <mesh geometry={rounded(W - 0.1, 0.22, 0.2, 0.08)} material={mat('#2a2d31', { rough: 0.6 })} position={[0, 0.42, -L / 2 + 0.02]} />
-        {/* headlights */}
-        {[-0.62, 0.62].map((x) => (
-          <mesh key={x} geometry={box} material={lm.head} position={[x, 0.78, L / 2 - 0.02]} scale={[0.42, 0.12, 0.06]} />
-        ))}
-        {/* tail lights (brake) */}
-        <mesh geometry={box} material={lm.brake} position={[0, 0.82, -L / 2 + 0.01]} scale={[W - 0.3, 0.1, 0.05]} />
-        {/* indicators (front + rear corners). Left = +x when facing +z */}
-        <mesh geometry={box} material={lm.indL} position={[W / 2 - 0.15, 0.78, L / 2 - 0.04]} scale={[0.28, 0.14, 0.08]} />
-        <mesh geometry={box} material={lm.indL} position={[W / 2 - 0.15, 0.82, -L / 2 + 0.03]} scale={[0.3, 0.16, 0.08]} />
-        <mesh geometry={box} material={lm.indL} position={[W / 2 + 0.02, 0.92, 1.05]} scale={[0.05, 0.09, 0.34]} />
-        <mesh geometry={box} material={lm.indR} position={[-W / 2 + 0.15, 0.78, L / 2 - 0.04]} scale={[0.28, 0.14, 0.08]} />
-        <mesh geometry={box} material={lm.indR} position={[-W / 2 + 0.15, 0.82, -L / 2 + 0.03]} scale={[0.3, 0.16, 0.08]} />
-        <mesh geometry={box} material={lm.indR} position={[-W / 2 - 0.02, 0.92, 1.05]} scale={[0.05, 0.09, 0.34]} />
-        {/* mirrors */}
-        {[-1, 1].map((s) => (
-          <mesh key={s} geometry={box} material={body} position={[s * (W / 2 + 0.1), 1.08, 0.75]} scale={[0.2, 0.14, 0.12]} />
-        ))}
-        </MergeStatic>
+      <Blob w={2.3} d={4.9} opacity={0.38} />
+      <group ref={bodyRef}>
+        <mesh geometry={g.body} material={m.paint} castShadow receiveShadow />
+        <mesh geometry={g.cabin} material={m.paint} castShadow />
+        <mesh geometry={g.glass} material={m.glass} />
+        <mesh geometry={g.trim} material={m.trim} castShadow receiveShadow />
+        <mesh geometry={g.chrome} material={m.chrome} />
+        <mesh geometry={g.head} material={m.head} />
+        <mesh geometry={g.brake} material={m.brake} />
+        <mesh geometry={g.indL} material={m.indL} />
+        <mesh geometry={g.indR} material={m.indR} />
+        <mesh geometry={g.plates} material={m.plate} />
       </group>
       {[
-        [0.82, 1.38],
-        [-0.82, 1.38],
-        [0.82, -1.38],
-        [-0.82, -1.38],
+        [tx, HATCH.frontAxle],
+        [-tx, HATCH.frontAxle],
+        [tx, HATCH.rearAxle],
+        [-tx, HATCH.rearAxle],
       ].map(([x, z], i) => (
-        <group key={i} position={[x, 0.34, z]} ref={setWheel(i)}>
-          <mesh geometry={wheelGeo} material={tyre} scale={[0.24, 0.34, 0.34]} castShadow />
-          <mesh geometry={wheelGeo} material={rim} scale={[0.25, 0.2, 0.2]} />
+        <group key={i} position={[x, HATCH.wheelR, z]}>
+          <group ref={setWheel(i)} scale={[x > 0 ? 1 : -1, 1, 1]}>
+            <mesh geometry={g.tyre} material={m.tyre} castShadow />
+            <mesh geometry={g.rim} material={m.rim} />
+            <mesh geometry={g.disc} material={m.disc} />
+          </group>
         </group>
       ))}
     </group>

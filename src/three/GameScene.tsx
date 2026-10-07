@@ -8,6 +8,9 @@ import { anchorEntries } from './anchors'
 import { Environment } from './environments'
 import { Ball, Bus, Car, Cyclist, Person, Van, type ViewGetter } from './models'
 import { MOODS, type Mood } from './moods'
+import { BenchmarkWorld, isBenchmark } from './render/BenchmarkWorld'
+import { plateFor } from './render/vehicles'
+import { forcedTier, initialTier, lowerTier, settingsFor, type QualityTier } from './render/quality'
 import { ringTexture } from './textures'
 
 /* ───────────── sky & lights ───────────── */
@@ -114,7 +117,7 @@ export function ActorNode({
   let hit: [number, number, number] = [1.4, 2.2, 1.4]
   switch (d.kind) {
     case 'car':
-      model = <Car get={get} color={color} parked={d.parked} />
+      model = <Car get={get} color={color} parked={d.parked} plate={plateFor(d.id)} />
       hit = [2.6, 2.2, 5.0]
       break
     case 'van':
@@ -238,6 +241,7 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
   const init = useRef(false)
   const fovRef = useRef(50)
   const offY = useRef(0)
+  const accS = useRef(0)
   const playerIdx = useMemo(() => runner.sim.actors.findIndex((a) => a.def.id === 'player'), [runner])
 
   useFrame((state, dtRaw) => {
@@ -256,10 +260,14 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
     const desiredPos = tmpV
     const desiredLook = new THREE.Vector3()
     let fov = 50
+    // smoothed longitudinal acceleration → chase cam "weight" (lags when braking, pulls back when accelerating)
+    accS.current += (THREE.MathUtils.clamp(pv.a, -6, 4) - accS.current) * Math.min(1, dt * 3)
     if (shot.kind === 'chase') {
       const k = portrait ? 1.12 : 1
-      const back = (shot.back ?? 9) * k
-      const up = (shot.up ?? 4.5) * (portrait ? 1.18 : 1)
+      const speedK = THREE.MathUtils.clamp(pv.v / 14, 0, 1)
+      const live = runner.phase === 'drive' || runner.phase === 'outcome'
+      const back = (shot.back ?? 9) * k + (live ? speedK * 1.1 + accS.current * 0.16 : 0)
+      const up = (shot.up ?? 4.5) * (portrait ? 1.18 : 1) + (live ? accS.current * 0.04 : 0)
       const ahead = (shot.ahead ?? 9) * (portrait ? 1.45 : 1)
       const side = shot.side ?? 0
       const fx = Math.sin(h)
@@ -268,7 +276,7 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
       const rz = Math.sin(h)
       desiredPos.set(pv.x - fx * back + rx * side, up, pv.z - fz * back + rz * side)
       desiredLook.set(pv.x + fx * ahead, 0.8, pv.z + fz * ahead)
-      fov = shot.fov ?? 50
+      fov = (shot.fov ?? 50) + (live ? speedK * 4 : 0)
       // Director: keep the step's focus actors in frame. Narrow (portrait) screens
       // swing the look target towards them and pull back a little.
       const step = runner.phase === 'step' || runner.phase === 'outcome' ? currentStepFocus(runner) : null
@@ -330,9 +338,11 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
     const isIntro = runner.phase === 'intro'
     const kPos = isIntro ? 1.6 : runner.phase === 'replay' ? 2.2 : 3.2
     const kLook = isIntro ? 2.4 : 5
-    pos.current.lerp(desiredPos, 1 - Math.exp(-dt * kPos))
-    look.current.lerp(desiredLook, 1 - Math.exp(-dt * kLook))
-    fovRef.current += (fov - fovRef.current) * (1 - Math.exp(-dt * 3))
+    // dev/screenshot hook: window.__camSnap = true makes the camera settle instantly
+    const snap = import.meta.env.DEV && (window as unknown as { __camSnap?: boolean }).__camSnap ? 1 : 0
+    pos.current.lerp(desiredPos, snap || 1 - Math.exp(-dt * kPos))
+    look.current.lerp(desiredLook, snap || 1 - Math.exp(-dt * kLook))
+    fovRef.current += (fov - fovRef.current) * (snap || 1 - Math.exp(-dt * 3))
     cam.position.copy(pos.current)
     // shake
     const sh = events.current.shake
@@ -435,19 +445,21 @@ export function useQuality() {
   return q
 }
 
-const FORCE_HQ = typeof location !== 'undefined' && new URLSearchParams(location.search).has('hq')
+/** A forced quality (?hq / ?quality=…) disables automatic downgrades. */
+const FORCE_HQ = forcedTier() !== null
 
-export function FrameGuard({ onSlow }: { onSlow: () => void }) {
+/** Calls onSlow when the frame rate stays low. With `repeat`, keeps watching (stepping quality down tier by tier). */
+export function FrameGuard({ onSlow, repeat = false, disabled = false }: { onSlow: () => void; repeat?: boolean; disabled?: boolean }) {
   const acc = useRef({ t: 0, n: 0, fired: FORCE_HQ })
   useFrame((_, dt) => {
     const a = acc.current
-    if (a.fired) return
+    if (a.fired || disabled) return
     a.t += dt
     a.n++
     if (a.t > 3) {
       const fps = a.n / a.t
       if (fps < 34) {
-        a.fired = true
+        a.fired = !repeat
         onSlow()
       }
       a.t = 0
@@ -474,6 +486,9 @@ export function ScenarioCanvas({
   const shake = useRef({ shake: 0 })
   const q = useQuality()
   const [lowPower, setLowPower] = useState(false)
+  const bench = isBenchmark(def.environment)
+  const [tier, setTier] = useState<QualityTier>(initialTier)
+  const quality = useMemo(() => settingsFor(tier), [tier])
   const [spotActive, setSpotActive] = useState(false)
   useEffect(() => {
     const off = runner.subscribe(() => setSpotActive(runner.ui.phase === 'step' && runner.ui.step?.kind === 'spot'))
@@ -484,13 +499,14 @@ export function ScenarioCanvas({
   const getters = useMemo(() => runner.sim.actors.map((_, i) => () => runner.view(i)), [runner])
   return (
     <Canvas
-      shadows={!lowPower && q.shadows ? 'soft' : false}
-      dpr={lowPower ? 1 : q.dpr}
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      shadows={bench ? (quality.shadows ? 'percentage' : false) : !lowPower && q.shadows ? 'soft' : false}
+      dpr={bench ? quality.dpr : lowPower ? 1 : q.dpr}
+      gl={{ antialias: !bench || !quality.post, powerPreference: 'high-performance' }}
       camera={{ fov: 50, near: 0.3, far: 900, position: [20, 30, 40] }}
       onCreated={(state) => {
         state.gl.toneMapping = THREE.ACESFilmicToneMapping
         state.gl.toneMappingExposure = mood.exposure
+        if (bench) state.gl.toneMappingExposure = 1
         if (import.meta.env.DEV) {
           const w = window as unknown as Record<string, unknown>
           w.__r3f = state
@@ -507,11 +523,17 @@ export function ScenarioCanvas({
       onPointerMissed={() => runner.tap(null)}
       style={{ touchAction: 'none' }}
     >
-      <color attach="background" args={[mood.fog]} />
-      <fog attach="fog" args={[mood.fog, mood.fogNear, mood.fogFar]} />
-      <Sky mood={mood} />
-      <Lights mood={mood} focus={focus} shadows={!lowPower} />
-      <Environment id={def.environment} haze={mood.skyHorizon} />
+      {bench ? (
+        <BenchmarkWorld id={def.environment} quality={quality} focus={focus} />
+      ) : (
+        <>
+          <color attach="background" args={[mood.fog]} />
+          <fog attach="fog" args={[mood.fog, mood.fogNear, mood.fogFar]} />
+          <Sky mood={mood} />
+          <Lights mood={mood} focus={focus} shadows={!lowPower} />
+          <Environment id={def.environment} haze={mood.skyHorizon} />
+        </>
+      )}
       {runner.sim.actors.map((rt, i) => (
         <ActorNode
           key={rt.def.id}
@@ -532,7 +554,11 @@ export function ScenarioCanvas({
         }}
       />
       <RunnerDriver runner={runner} onSimEvents={onSimEvents} onUIEvents={onUIEvents} shake={shake} />
-      <FrameGuard onSlow={() => setLowPower(true)} />
+      {bench ? (
+        <FrameGuard repeat disabled={tier === 'low'} onSlow={() => setTier((t) => lowerTier(t))} />
+      ) : (
+        <FrameGuard onSlow={() => setLowPower(true)} />
+      )}
     </Canvas>
   )
 }

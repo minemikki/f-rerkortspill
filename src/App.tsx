@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { useNav } from './state/nav'
 import { Landing } from './ui/screens/Landing'
 import { MapScreen } from './ui/screens/MapScreen'
@@ -10,7 +10,20 @@ import { ReviewScreen } from './ui/screens/ReviewScreen'
  * Screen transitions are a yellow road-stripe wipe: the slab covers the
  * screen, the next screen mounts underneath, then the slab exits.
  */
+// dev-only look-dev page (tree-shaken from production builds)
+const AssetLab = import.meta.env.DEV ? lazy(() => import('./dev/AssetLab')) : null
+
 export default function App() {
+  if (AssetLab && location.hash.startsWith('#/lab'))
+    return (
+      <Suspense fallback={null}>
+        <AssetLab />
+      </Suspense>
+    )
+  return <Screens />
+}
+
+function Screens() {
   const { screen, scenarioId, nonce, wiping, pending, _commit, _done } = useNav()
 
   useEffect(() => {

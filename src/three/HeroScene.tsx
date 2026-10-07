@@ -5,9 +5,9 @@ import { line } from '../engine/path'
 import { Sim } from '../engine/sim'
 import type { ActorDef, SpeedCmd } from '../engine/types'
 import { KRYSS } from '../scenarios/layouts'
-import { Environment } from './environments'
-import { ActorNode, AnchorProjector, FrameGuard, Lights, Sky, labelHeight, useQuality } from './GameScene'
-import { MOODS } from './moods'
+import { ActorNode, AnchorProjector, FrameGuard, labelHeight } from './GameScene'
+import { BenchmarkWorld } from './render/BenchmarkWorld'
+import { initialTier, lowerTier, settingsFor, type QualityTier } from './render/quality'
 
 /**
  * Landing hero: a living, looping Norwegian residential intersection seen
@@ -31,9 +31,10 @@ export const HERO_ACTORS: ActorDef[] = [
   { id: 'hero-car2', kind: 'car', path: line(-110, L, 120, L), v0: 7, program: loop(P, 6, 7), color: '#8E2B22' },
   { id: 'hero-car4', kind: 'van', path: line(-110, L, 120, L), v0: 7, program: loop(P, 19, 7), color: '#F2F0EA' },
   { id: 'hero-cyclist', kind: 'cyclist', path: line(-2.4, -60, -2.4, 80), v0: 5, program: loop(P, 17.6, 5), variant: 0 },
-  { id: 'hero-walker', kind: 'pedestrian', path: line(-5.9, -30, -5.9, 30), v0: 1.25, program: loop(46, 0, 1.25, 8), variant: 2 },
+  { id: 'hero-walker', kind: 'pedestrian', path: line(-4.4, -30, -4.4, 30), v0: 1.25, program: loop(46, 0, 1.25, 8), variant: 2 },
   { id: 'hero-walker2', kind: 'pedestrian', path: line(4.2, 30, 4.2, -30), s0: 12, v0: 1.15, program: [{ at: 0, v: 1.15 }, ...loop(52, 18, 1.15, 8)], variant: 0 },
-  { id: 'parked-1', kind: 'car', path: line(-4.4, 16, -4.4, 0), parked: true, color: '#3C4A57' },
+  // parked nose-in on a driveway
+  { id: 'parked-1', kind: 'car', path: line(-8.6, 26.2, -14, 26.2), parked: true, color: '#3C4A57' },
 ]
 
 function HeroDriver({ sim }: { sim: Sim }) {
@@ -78,28 +79,19 @@ export function HeroCanvas() {
     s.advance(P + 9) // start mid-action, after every loop has spawned
     return s
   }, [])
-  const mood = MOODS.morning
   const focus = useRef(new THREE.Vector3(0, 0, 4))
-  const q = useQuality()
-  const [low, setLow] = useState(false)
+  const [tier, setTier] = useState<QualityTier>(initialTier)
+  const quality = useMemo(() => settingsFor(tier), [tier])
   const getters = useMemo(() => sim.actors.map((a) => () => a.view), [sim])
   return (
     <Canvas
-      shadows={low ? false : 'soft'}
-      dpr={low ? 1 : q.dpr}
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      shadows={quality.shadows ? 'percentage' : false}
+      dpr={quality.dpr}
+      gl={{ antialias: !quality.post, powerPreference: 'high-performance' }}
       camera={{ fov: 42, near: 0.3, far: 900, position: [-2, 3.4, 16] }}
-      onCreated={({ gl }) => {
-        gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = mood.exposure
-      }}
       style={{ touchAction: 'pan-y' }}
     >
-      <color attach="background" args={[mood.fog]} />
-      <fog attach="fog" args={[mood.fog, mood.fogNear, mood.fogFar]} />
-      <Sky mood={mood} />
-      <Lights mood={mood} focus={focus} shadows={!low} />
-      <Environment id="hero" haze={mood.skyHorizon} />
+      <BenchmarkWorld id="hero" quality={quality} focus={focus} />
       {sim.actors.map((rt, i) => (
         <ActorNode key={rt.def.id} rt={rt} get={getters[i]} tappable={false} />
       ))}
@@ -114,7 +106,7 @@ export function HeroCanvas() {
           return { x: a.view.x, z: a.view.z, visible: a.view.visible && near, h: labelHeight(a.def.kind) }
         }}
       />
-      <FrameGuard onSlow={() => setLow(true)} />
+      <FrameGuard repeat disabled={tier === 'low'} onSlow={() => setTier((t) => lowerTier(t))} />
     </Canvas>
   )
 }

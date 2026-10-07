@@ -1,0 +1,96 @@
+[
+  {
+    "name": "asphalt",
+    "source": "Poly Haven",
+    "asset": "asphalt_04",
+    "url": "https://polyhaven.com/a/asphalt_04",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "pavement",
+    "source": "Poly Haven",
+    "asset": "concrete_pavement",
+    "url": "https://polyhaven.com/a/concrete_pavement",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "granite",
+    "source": "Poly Haven",
+    "asset": "granite_tile_04",
+    "url": "https://polyhaven.com/a/granite_tile_04",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "grass",
+    "source": "Poly Haven",
+    "asset": "leafy_grass (hue-shifted to lawn green, scripts/assets/lawn.py)",
+    "url": "https://polyhaven.com/a/leafy_grass",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "gravel",
+    "source": "Poly Haven",
+    "asset": "gravel_floor_02",
+    "url": "https://polyhaven.com/a/gravel_floor_02",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "siding",
+    "source": "Poly Haven",
+    "asset": "white_planks_clean",
+    "url": "https://polyhaven.com/a/white_planks_clean",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "roof_dark",
+    "source": "Poly Haven",
+    "asset": "grey_roof_01",
+    "url": "https://polyhaven.com/a/grey_roof_01",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "roof_red",
+    "source": "Poly Haven",
+    "asset": "roof_tiles",
+    "url": "https://polyhaven.com/a/roof_tiles",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "concrete",
+    "source": "Poly Haven",
+    "asset": "concrete",
+    "url": "https://polyhaven.com/a/concrete",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "bark",
+    "source": "Poly Haven",
+    "asset": "pine_bark",
+    "url": "https://polyhaven.com/a/pine_bark",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "leaves",
+    "source": "Poly Haven",
+    "asset": "island_tree_01 (leaf texture only)",
+    "url": "https://polyhaven.com/a/island_tree_01",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "sky",
+    "source": "Poly Haven",
+    "asset": "kloofendal_48d_partly_cloudy_puresky",
+    "url": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "foliage_cluster, birch_cluster, hedge_diff",
+    "source": "Generated in-house (scripts/assets) from Poly Haven island_tree_01 leaf texture",
+    "license": "CC0 1.0 (derived)"
+  },
+  {
+    "name": "spruce_frond, birch_bark",
+    "source": "Procedurally generated in-house",
+    "license": "Project-owned"
+  }
+]
