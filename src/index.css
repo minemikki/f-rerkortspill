@@ -43,10 +43,13 @@ body {
   font-feature-settings: 'ss01', 'tnum';
 }
 
-button {
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
+/* in the base layer so Tailwind colour utilities on buttons win */
+@layer base {
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
 }
 
 ::selection {

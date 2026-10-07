@@ -266,7 +266,7 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
     if (shot.kind === 'chase') {
       const k = portrait ? 1.12 : 1
       const speedK = THREE.MathUtils.clamp(pv.v / 14, 0, 1)
-      const live = runner.phase === 'drive' || runner.phase === 'outcome'
+      const live = !REDUCED_MOTION && (runner.phase === 'drive' || runner.phase === 'outcome')
       const back = (shot.back ?? 9) * k + (live ? speedK * 1.1 + accS.current * 0.16 : 0)
       const up = (shot.up ?? 4.5) * (portrait ? 1.18 : 1) + (live ? accS.current * 0.04 : 0)
       const ahead = (shot.ahead ?? 9) * (portrait ? 1.45 : 1)
@@ -347,7 +347,8 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
     cam.position.copy(pos.current)
     // shake
     const sh = events.current.shake
-    if (sh > 0.001) {
+    if (sh > 0.001 && REDUCED_MOTION) events.current.shake = 0
+    else if (sh > 0.001) {
       const t = state.clock.elapsedTime
       cam.position.x += Math.sin(t * 53) * sh * 0.35
       cam.position.y += Math.sin(t * 71 + 1) * sh * 0.25
@@ -454,6 +455,9 @@ export function useQuality() {
   return q
 }
 
+/** prefers-reduced-motion: no camera shake, no speed-dependent FOV/pull-back */
+const REDUCED_MOTION = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
 /** A forced quality (?hq / ?quality=…) disables automatic downgrades. */
 const FORCE_HQ = forcedTier() !== null
 
@@ -523,6 +527,17 @@ export function ScenarioCanvas({
           const w = window as unknown as Record<string, unknown>
           w.__r3f = state
           w.__runner = runner
+          // perf probe: renders the scene once directly (incl. shadow pass, excl. post FX) and reports cost
+          w.__perf = () => {
+            const { gl, scene, camera } = state
+            const prev = gl.info.autoReset
+            gl.info.autoReset = false
+            gl.info.reset()
+            gl.render(scene, camera)
+            const r = { calls: gl.info.render.calls, triangles: gl.info.render.triangles, textures: gl.info.memory.textures, geometries: gl.info.memory.geometries, programs: gl.info.programs?.length ?? 0, dpr: gl.getPixelRatio(), shadowMap: gl.shadowMap.enabled }
+            gl.info.autoReset = prev
+            return r
+          }
           w.__screenOf = (id: string) => {
             const a = runner.sim.byId.get(id)
             if (!a) return null

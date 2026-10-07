@@ -127,6 +127,12 @@ describe('daily plan', () => {
     for (const i of p.items) expect(i.reason.length).toBeGreaterThan(5)
   })
 
+  it('fills ~12 minutes for a brand-new learner without practice unlocked', () => {
+    const p = dailyPlan({ ...base, practiceUnlocked: false, mastery: emptyMastery(), completed: {} })
+    expect(p.minutes).toBeGreaterThanOrEqual(12)
+    expect(p.items.filter((i) => i.kind === 'scenario').map((i) => i.scenarioId)).toEqual(['s1-hoyreregel', 's2-ballen'])
+  })
+
   it('is deterministic', () => {
     const a = dailyPlan({ ...base, mastery: emptyMastery(), completed: { 's1-hoyreregel': { stars: 2 } } })
     const b = dailyPlan({ ...base, mastery: emptyMastery(), completed: { 's1-hoyreregel': { stars: 2 } } })

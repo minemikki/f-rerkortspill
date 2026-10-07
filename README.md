@@ -23,8 +23,15 @@ Nyttige URL-er i dev:
 | `/` | Landingsside med levende 3D-hero |
 | `/#/kart` | Progresjonskart (Verden 1: Byen) |
 | `/#/kjor/s1-hoyreregel` | Hopp rett inn i et nivå (`s1`–`s5`) |
-| `/#/faglig` | Faglig gjennomgang: alt innhold for trafikklærer |
-| `?hq` | Slår av automatisk kvalitetsnedtrekk (for skjermbilder) |
+| `/#/faglig` | Faglig gjennomgang: scenarioer, teorispørsmål, regelkort, vurderingskriterier (+ JSON-eksport) |
+| `/#/teori` | Teoritrening (demonstrator, med/uten tid, feilgjennomgang, «Tren dette») |
+| `/#/ovelse` | Øvelseskjøring: kjør selv i S1-krysset, KJØREVURDERING etterpå |
+| `/#/provekjoring` | Simulert prøvekjøring (exam-modus: bare veibeskrivelse, ingen hint) |
+| `/#/lab?view=car` | (kun dev) Asset lab for look-dev |
+| `?quality=high\|medium\|low`, `?hq` | Tving kvalitetsnivå (slår av automatisk nedtrekk) |
+
+Dokumentasjon: [docs/VISUAL_PIPELINE.md](docs/VISUAL_PIPELINE.md) · [docs/LEARNING_SYSTEMS.md](docs/LEARNING_SYSTEMS.md) ·
+[docs/ASSET_AUDIT.md](docs/ASSET_AUDIT.md) · [docs/THREEJS_VS_UNREAL.md](docs/THREEJS_VS_UNREAL.md) · skjermbilder i [docs/screenshots](docs/screenshots/).
 
 ## Arkitektur
 
@@ -42,10 +49,14 @@ src/
   content/
     scenarios/       FAGLIG INNHOLD per nivå — tekster, regler, kilder, review-status
     world.ts         Verdener, merker, kategorinavn
+  learning/          Teorimotor (spørsmålsbank, skjema, review-status), mestring (teori vs i trafikken), dagsplan
+  practice/          Øvelseskjøring: kinematisk bil, instruktørrute, evaluator → KJØREVURDERING
   three/             React Three Fiber: miljøer, modeller, kamera, lys, highlights
+    render/          Visuell pipeline: kvalitetsnivåer, PBR-materialer, HDRI-lys, post FX, trær, gatekit, bil
+    env/             Benchmark-miljøer (ResidentialKryss = S1)
   ui/                Skjermer (landing, kart, spill, faglig) og overlays
   audio/sfx.ts       Prosedyrisk WebAudio-lyd (motor, blinklys, horn, sykkelbjelle, feedback)
-  state/             Zustand: progresjon (localStorage) og navigasjon
+  state/             Zustand: progresjon, læring/mestring (localStorage) og navigasjon
 ```
 
 ### Mekanikker (steg-typer)

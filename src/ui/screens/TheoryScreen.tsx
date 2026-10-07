@@ -274,7 +274,7 @@ function Results({ qs, answers, onAgain, onTrain }: { qs: TheoryQuestion[]; answ
               <div key={q.id} className="rounded-[22px] bg-white/[0.035] ring-1 ring-white/8">
                 <button className="flex w-full items-center gap-3 p-4 text-left" onClick={() => setOpen(isOpen ? null : q.id)} aria-expanded={isOpen}>
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-stop/20 text-[13px] font-black text-stop">✕</span>
-                  <span className="flex-1 text-[14px] font-bold leading-snug">{q.prompt}</span>
+                  <span className="flex-1 text-[14px] font-bold leading-snug">{isOpen ? `${THEORY_CATEGORY_LABELS[q.category]} · ${q.subtopic}` : q.prompt}</span>
                   <span className="text-fog">{isOpen ? '−' : '+'}</span>
                 </button>
                 {isOpen && (

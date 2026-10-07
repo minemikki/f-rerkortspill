@@ -73,11 +73,11 @@ export function DailyPlanCard() {
         ))}
       </ol>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <button className="btn btn-ghost h-[48px] text-[12px]" onClick={() => go('theory')}>
+        <button className="btn btn-ghost h-[50px] px-2 text-[13px] !normal-case !tracking-normal" onClick={() => go('theory')}>
           Teoritrening
         </button>
-        <button className="btn btn-ghost h-[48px] text-[12px]" onClick={() => go('practice', 'practice')}>
-          Øvelseskjøring
+        <button className="btn btn-ghost h-[50px] px-2 text-[13px] !normal-case !tracking-normal" onClick={() => go('practice', 'practice')}>
+          Kjør selv
         </button>
       </div>
       {hasEvidence && (

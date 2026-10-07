@@ -54,7 +54,7 @@ export const NORDIC_DAY: AtmospherePreset = {
 
 const BASE = import.meta.env.BASE_URL ?? '/'
 let envPromise: Promise<THREE.DataTexture> | null = null
-let backdropTex: THREE.Texture | null = null
+const backdrops = new Map<string, THREE.Texture>()
 
 /**
  * Loads the HDRI and clamps its sun disc. The directional light IS the sun
@@ -111,12 +111,16 @@ export function Atmosphere({
       scene.environmentIntensity = preset.envIntensity
     })
     if (background) {
-      if (!backdropTex) {
-        backdropTex = new THREE.TextureLoader().load(BASE + preset.backdrop)
-        backdropTex.mapping = THREE.EquirectangularReflectionMapping
-        backdropTex.colorSpace = THREE.SRGBColorSpace
+      // 4k sky ≈ 45 MB of GPU memory with mips — only on the high tier; 2k (≈ 11 MB) otherwise
+      const file = quality.tier === 'high' ? preset.backdrop : preset.backdrop.replace('_4k', '_2k')
+      let tex = backdrops.get(file)
+      if (!tex) {
+        tex = new THREE.TextureLoader().load(BASE + file)
+        tex.mapping = THREE.EquirectangularReflectionMapping
+        tex.colorSpace = THREE.SRGBColorSpace
+        backdrops.set(file, tex)
       }
-      scene.background = backdropTex
+      scene.background = tex
       scene.backgroundIntensity = preset.backgroundIntensity
     }
     scene.fog = new THREE.Fog(preset.haze, preset.hazeNear, preset.hazeFar)
@@ -129,7 +133,7 @@ export function Atmosphere({
       envRT?.dispose()
       pmrem.dispose()
     }
-  }, [scene, gl, preset, background])
+  }, [scene, gl, preset, background, quality.tier])
 
   useFrame(({ camera }) => {
     const s = sun.current

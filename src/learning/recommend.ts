@@ -77,10 +77,15 @@ export function dailyPlan(p: PlanInput): { items: PlanItem[]; minutes: number; f
   const ch = scenarioFor(focus[1], challengePool) ?? scenarioFor(focus[0], challengePool) ?? challengePool[0]
   if (ch) items.push({ kind: 'challenge', scenarioId: ch, title: `3 stjerner: ${p.titleOf(ch)}`, reason: 'Du har ikke full uttelling her ennå', minutes: MIN_PER_SCENARIO })
   else if (p.practiceUnlocked) items.push({ kind: 'practice', title: 'Øvelseskjøring i boligfeltet', reason: 'Kjør selv med instruktør – bruk det du har lært', minutes: MIN_PRACTICE })
+  else {
+    // brand-new learner: a second new situation instead of a challenge
+    const second = p.scenarioOrder.find((id) => !p.completed[id] && !usedScenario.has(id))
+    if (second) items.push({ kind: 'scenario', scenarioId: second, title: p.titleOf(second), reason: 'Når du er varm i trøya', minutes: MIN_PER_SCENARIO })
+  }
 
   // 4 · targeted theory fills the rest of the session up to the target length
   const used = items.reduce((a, i) => a + i.minutes, 0)
-  const nQ = Math.max(4, Math.min(10, Math.round((TARGET_MINUTES[0] + 1 - used) / MIN_PER_QUESTION)))
+  const nQ = Math.max(4, Math.min(12, Math.round((TARGET_MINUTES[0] + 1 - used) / MIN_PER_QUESTION)))
   const dueSet = new Set(due)
   const ranked = QUESTIONS.filter((q) => !dueSet.has(q.id))
     .map((q) => {

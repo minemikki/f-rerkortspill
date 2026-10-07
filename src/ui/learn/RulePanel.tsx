@@ -38,7 +38,8 @@ export function MasteryBars({ mastery, deltas, only }: { mastery: MasteryState; 
   const deltaOf = (s: SkillId, t: 'theory' | 'applied') => {
     const d = deltas?.find((x) => x.skill === s && x.track === t)
     if (!d) return null
-    return Math.round((d.after - (d.before ?? 0)) * 100)
+    if (d.before === null) return 'ny' as const
+    return Math.round((d.after - d.before) * 100)
   }
   return (
     <div className="space-y-3">
@@ -67,7 +68,9 @@ export function MasteryBars({ mastery, deltas, only }: { mastery: MasteryState; 
                   <div className={`h-full rounded-full ${t === 'theory' ? 'bg-ice' : 'bg-signal'} transition-[width] duration-700`} style={{ width: `${(v ?? 0) * 100}%` }} />
                 </div>
                 <span className="num w-8 text-right text-[12px] font-bold">{pct(v)}</span>
-                <span className={`num w-9 text-right text-[11px] font-bold ${d === null ? 'text-transparent' : d >= 0 ? 'text-go' : 'text-stop'}`}>{d === null ? '0' : `${d >= 0 ? '+' : ''}${d}`}</span>
+                <span className={`num w-9 text-right text-[11px] font-bold ${d === null ? 'text-transparent' : d === 'ny' ? 'text-ice' : d >= 0 ? 'text-go' : 'text-stop'}`}>
+                  {d === null ? '0' : d === 'ny' ? 'ny' : `${d >= 0 ? '+' : ''}${d}`}
+                </span>
               </div>
             )
           })}

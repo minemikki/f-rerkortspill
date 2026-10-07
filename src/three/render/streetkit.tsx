@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { metal, paint, plastic, surface, windowGlass } from './materials'
@@ -196,6 +196,7 @@ export function Drain({ x, z, rot = 0 }: { x: number; z: number; rot?: number })
 }
 
 let manholeTex: THREE.CanvasTexture | null = null
+let manholeMat: THREE.MeshStandardMaterial | null = null
 export function Manhole({ x, z }: { x: number; z: number }) {
   if (!manholeTex) {
     const c = document.createElement('canvas')
@@ -219,15 +220,18 @@ export function Manhole({ x, z }: { x: number; z: number }) {
     manholeTex = new THREE.CanvasTexture(c)
     manholeTex.colorSpace = THREE.SRGBColorSpace
   }
+  manholeMat ??= new THREE.MeshStandardMaterial({ map: manholeTex, metalness: 0.7, roughness: 0.55 })
   return (
-    <mesh position={[x, 0.007, z]} rotation-x={-Math.PI / 2} receiveShadow>
+    <mesh position={[x, 0.007, z]} rotation-x={-Math.PI / 2} receiveShadow material={manholeMat}>
       <circleGeometry args={[0.34, 24]} />
-      <meshStandardMaterial map={manholeTex} metalness={0.7} roughness={0.55} />
     </mesh>
   )
 }
 
 /* ───────────── furniture ───────────── */
+
+let _lens: THREE.MeshStandardMaterial | null = null
+const lampLens = () => (_lens ??= new THREE.MeshStandardMaterial({ color: '#fff', emissive: '#fff4dc', emissiveIntensity: 0.4, side: THREE.DoubleSide }))
 
 /** Modern Norwegian street light: galvanised tapered pole, slim LED head. */
 export function StreetLight({ x, z, rot = 0, h = 6 }: { x: number; z: number; rot?: number; h?: number }) {
@@ -247,9 +251,8 @@ export function StreetLight({ x, z, rot = 0, h = 6 }: { x: number; z: number; ro
     <group position={[x, 0, z]} rotation-y={rot}>
       <M geo={geo.metal} mat={metal('#9da2a6', 0.42)} />
       <M geo={geo.head} mat={plastic('#3c4045', 0.45)} />
-      <mesh position={[0, h - 0.06, 1.3]} rotation-x={Math.PI / 2}>
+      <mesh position={[0, h - 0.06, 1.3]} rotation-x={Math.PI / 2} material={lampLens()}>
         <planeGeometry args={[0.16, 0.5]} />
-        <meshStandardMaterial color="#fff" emissive="#fff4dc" emissiveIntensity={0.4} />
       </mesh>
     </group>
   )
@@ -364,42 +367,41 @@ export function Hedge(p: { x: number; z: number; w: number; d: number; h?: numbe
   return <M geo={geo} mat={getHedgeMat()} />
 }
 
-/** White picket fence ("stakittgjerde"). Instanced pickets + rails. */
-export function PicketFence({ x, z, length, axis = 'x', color = WHITE }: { x: number; z: number; length: number; axis?: 'x' | 'z'; color?: string }) {
-  const ref = useRef<THREE.InstancedMesh>(null)
+/** White picket fence ("stakittgjerde") as ONE merged geometry, so MergeStatic can batch every fence on a street. */
+let picketProto: THREE.BufferGeometry | null = null
+export function fenceGeo(x: number, z: number, length: number, axis: 'x' | 'z' = 'x') {
+  if (!picketProto) {
+    const sh = new THREE.Shape()
+    sh.moveTo(-0.035, 0)
+    sh.lineTo(0.035, 0)
+    sh.lineTo(0.035, 0.92)
+    sh.lineTo(0, 1.0)
+    sh.lineTo(-0.035, 0.92)
+    sh.closePath()
+    picketProto = new THREE.ExtrudeGeometry(sh, { depth: 0.02, bevelEnabled: false }).toNonIndexed()
+    picketProto.deleteAttribute('uv')
+  }
   const n = Math.max(2, Math.floor(length / 0.16))
-  const picket = useMemo(() => {
-    const s = new THREE.Shape()
-    s.moveTo(-0.035, 0)
-    s.lineTo(0.035, 0)
-    s.lineTo(0.035, 0.92)
-    s.lineTo(0, 1.0)
-    s.lineTo(-0.035, 0.92)
-    s.closePath()
-    return new THREE.ExtrudeGeometry(s, { depth: 0.02, bevelEnabled: false })
-  }, [])
-  useLayoutEffect(() => {
-    const m = new THREE.Matrix4()
-    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), axis === 'x' ? 0 : Math.PI / 2)
-    for (let i = 0; i < n; i++) {
-      const p = -length / 2 + (i + 0.5) * (length / n)
-      m.compose(axis === 'x' ? new THREE.Vector3(x + p, 0, z) : new THREE.Vector3(x, 0, z + p), q, new THREE.Vector3(1, 1, 1))
-      ref.current!.setMatrixAt(i, m)
-    }
-    ref.current!.instanceMatrix.needsUpdate = true
-    ref.current!.computeBoundingSphere()
-  }, [n, x, z, length, axis])
-  const mat = paint(color, 0.6)
-  return (
-    <group>
-      <instancedMesh ref={ref} args={[picket, mat, n]} castShadow receiveShadow />
-      {[0.28, 0.72].map((y) => (
-        <mesh key={y} position={[x, y, z]} material={mat} castShadow>
-          <boxGeometry args={axis === 'x' ? [length, 0.07, 0.03] : [0.03, 0.07, length]} />
-        </mesh>
-      ))}
-    </group>
-  )
+  const parts: THREE.BufferGeometry[] = []
+  const m = new THREE.Matrix4()
+  const rot = new THREE.Matrix4().makeRotationY(axis === 'x' ? 0 : Math.PI / 2)
+  for (let i = 0; i < n; i++) {
+    const p = -length / 2 + (i + 0.5) * (length / n)
+    m.makeTranslation(axis === 'x' ? x + p : x, 0, axis === 'x' ? z : z + p).multiply(rot)
+    parts.push(picketProto.clone().applyMatrix4(m))
+  }
+  for (const y of [0.28, 0.72]) {
+    const r = new THREE.BoxGeometry(axis === 'x' ? length : 0.03, 0.07, axis === 'x' ? 0.03 : length).toNonIndexed()
+    r.deleteAttribute('uv')
+    r.translate(x, y, z)
+    parts.push(r)
+  }
+  return boxUV(mergeGeometries(parts)!)
+}
+
+export function PicketFence({ x, z, length, axis = 'x', color = WHITE }: { x: number; z: number; length: number; axis?: 'x' | 'z'; color?: string }) {
+  const geo = useMemo(() => fenceGeo(x, z, length, axis), [x, z, length, axis])
+  return <M geo={geo} mat={paint(color, 0.6)} />
 }
 
 /* ───────────── house ───────────── */

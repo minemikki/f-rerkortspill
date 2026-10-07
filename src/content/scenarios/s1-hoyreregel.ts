@@ -42,13 +42,13 @@ export const s1Content = {
   rules: [
     {
       text: 'Høyreregelen: Du har vikeplikt for kjøretøy som kommer fra høyre når skilt eller lyssignal ikke bestemmer noe annet.',
-      source: 'Statens vegvesen – «Vikeplikt i ulike trafikksituasjoner» (trafikkreglene § 7)',
+      source: 'Trafikkreglene § 7 nr. 2 (Lovdata, sjekket 7. okt. 2026) · Statens vegvesen – «Vikeplikt i ulike trafikksituasjoner»',
       verifiedByDev: true,
     },
     {
       text: 'Den som har vikeplikt skal vise tydelig, i god tid, at den vil vike (f.eks. ved å senke farten).',
-      source: 'Trafikkreglene § 7 (vikeplikt – generelt)',
-      verifiedByDev: false,
+      source: 'Trafikkreglene § 7 nr. 1 (Lovdata, sjekket 7. okt. 2026)',
+      verifiedByDev: true,
     },
   ],
   review: {

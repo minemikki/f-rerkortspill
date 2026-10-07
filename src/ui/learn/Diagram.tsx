@@ -157,7 +157,7 @@ function DiagramSvg({ id, mirror }: { id: DiagramId; mirror?: boolean }) {
             <Arrow d="M95 140 V122" color={YOU} dashed />
             <Car x={30} y={97} rot={90} color={OTHER} />
             <Car x={170} y={73} rot={-90} color={OTHER} />
-            <text x={150} y={150} fontSize={10} fontWeight={800} fill={YOU}>
+            <text x={160} y={150} fontSize={10} fontWeight={800} fill={YOU} textAnchor="middle">
               VIK FOR ALLE
             </text>
           </>

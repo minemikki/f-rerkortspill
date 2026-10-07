@@ -555,12 +555,12 @@ export function MistakeCard({
             <div className="text-[15px] font-extrabold uppercase tracking-wide text-fog" style={{ fontStretch: '115%' }}>
               Du så {saw}.
             </div>
-            <h2 className="display-tight mt-1 text-[clamp(30px,8.4vw,44px)]">
+            <h2 className={`display-tight mt-1 break-words ${missed.length > 10 ? 'text-[clamp(26px,7.4vw,36px)]' : 'text-[clamp(30px,8.4vw,44px)]'}`}>
               Men du overså <span className="text-signal">{missed}.</span>
             </h2>
           </>
         ) : missed ? (
-          <h2 className="display-tight text-[clamp(30px,8.4vw,44px)]">
+          <h2 className={`display-tight break-words ${missed.length > 10 ? 'text-[clamp(26px,7.4vw,36px)]' : 'text-[clamp(30px,8.4vw,44px)]'}`}>
             Du overså <span className="text-signal">{missed}.</span>
           </h2>
         ) : (

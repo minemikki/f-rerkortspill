@@ -29,7 +29,7 @@ export const HERO_ACTORS: ActorDef[] = [
   { id: 'hero-car', kind: 'car', path: line(110, -L, -120, -L), v0: 8, program: loop(P, 0, 8), color: '#2F5D8A' },
   { id: 'hero-car3', kind: 'car', path: line(110, -L, -120, -L), v0: 8, program: loop(P, 13, 8), color: '#D9D4C7' },
   { id: 'hero-car2', kind: 'car', path: line(-110, L, 120, L), v0: 7, program: loop(P, 6, 7), color: '#8E2B22' },
-  { id: 'hero-car4', kind: 'van', path: line(-110, L, 120, L), v0: 7, program: loop(P, 19, 7), color: '#F2F0EA' },
+  { id: 'hero-car4', kind: 'car', path: line(-110, L, 120, L), v0: 7, program: loop(P, 19, 7), color: '#5C6B75' },
   { id: 'hero-cyclist', kind: 'cyclist', path: line(-2.4, -60, -2.4, 80), v0: 5, program: loop(P, 17.6, 5), variant: 0 },
   { id: 'hero-walker', kind: 'pedestrian', path: line(-4.4, -30, -4.4, 30), v0: 1.25, program: loop(46, 0, 1.25, 8), variant: 2 },
   { id: 'hero-walker2', kind: 'pedestrian', path: line(4.2, 30, 4.2, -30), s0: 12, v0: 1.15, program: [{ at: 0, v: 1.15 }, ...loop(52, 18, 1.15, 8)], variant: 0 },

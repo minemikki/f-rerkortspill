@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { lazy, Suspense, useEffect } from 'react'
 import { useNav } from './state/nav'
 import { Landing } from './ui/screens/Landing'
@@ -23,7 +23,11 @@ export default function App() {
         <AssetLab />
       </Suspense>
     )
-  return <Screens />
+  return (
+    <MotionConfig reducedMotion="user">
+      <Screens />
+    </MotionConfig>
+  )
 }
 
 function Screens() {

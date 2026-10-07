@@ -237,6 +237,7 @@ export function ResidentialKryss({ quality }: { quality: QualitySettings }) {
             <Hedge key={`e${i}`} x={l.edgeLine.x} z={l.edgeLine.z} w={l.edgeLine.axis === 'x' ? l.edgeLine.len : 0.9} d={l.edgeLine.axis === 'z' ? l.edgeLine.len : 0.9} h={1.15} seed={i} />
           ) : null,
         )}
+        {L.map((l, i) => (l.edge === 'fence' ? <PicketFence key={`f${i}`} x={l.edgeLine.x} z={l.edgeLine.z} length={l.edgeLine.len} axis={l.edgeLine.axis} /> : null))}
         {BLOCKING_HEDGES.map((h, i) => (
           <Hedge key={`b${i}`} {...h} />
         ))}
@@ -259,7 +260,6 @@ export function ResidentialKryss({ quality }: { quality: QualitySettings }) {
         <Manhole x={-0.8} z={24} />
         <Manhole x={18} z={0.7} />
       </MergeStatic>
-      {L.map((l, i) => (l.edge === 'fence' ? <PicketFence key={`f${i}`} x={l.edgeLine.x} z={l.edgeLine.z} length={l.edgeLine.len} axis={l.edgeLine.axis} /> : null))}
       <RoadWear axis="z" at={0} from={NS.from} to={NS.to} width={R * 2} />
       <RoadWear axis="x" at={0} from={R} to={EW} width={R * 2} />
       <RoadWear axis="x" at={0} from={-EW} to={-R} width={R * 2} />

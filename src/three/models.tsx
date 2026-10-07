@@ -128,7 +128,6 @@ export function Car({ get, color, parked, plate = 'EK 24816' }: { get: ViewGette
       <Blob w={2.3} d={4.9} opacity={0.38} />
       <group ref={bodyRef}>
         <mesh geometry={g.body} material={m.paint} castShadow receiveShadow />
-        <mesh geometry={g.cabin} material={m.paint} castShadow />
         <mesh geometry={g.glass} material={m.glass} />
         <mesh geometry={g.trim} material={m.trim} castShadow receiveShadow />
         <mesh geometry={g.chrome} material={m.chrome} />
@@ -148,7 +147,6 @@ export function Car({ get, color, parked, plate = 'EK 24816' }: { get: ViewGette
           <group ref={setWheel(i)} scale={[x > 0 ? 1 : -1, 1, 1]}>
             <mesh geometry={g.tyre} material={m.tyre} castShadow />
             <mesh geometry={g.rim} material={m.rim} />
-            <mesh geometry={g.disc} material={m.disc} />
           </group>
         </group>
       ))}

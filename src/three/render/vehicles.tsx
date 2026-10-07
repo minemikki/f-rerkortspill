@@ -173,7 +173,6 @@ export interface HatchGeos {
   plates: THREE.BufferGeometry
   tyre: THREE.BufferGeometry
   rim: THREE.BufferGeometry
-  disc: THREE.BufferGeometry
 }
 
 let geos: HatchGeos | null = null
@@ -368,13 +367,15 @@ export function hatchGeos(): HatchGeos {
   ring.rotateY(Math.PI / 2)
   ring.translate(tw * 0.62, 0, 0)
   rimParts.push(ring)
-  const rim = mergeGeometries(rimParts.map(stripToPN), false)!
+  // brake disc shares the rim material (one draw call less per wheel)
   const disc = new THREE.CylinderGeometry(0.17, 0.17, 0.02, 20)
   disc.rotateZ(Math.PI / 2)
   disc.translate(-tw * 0.1, 0, 0)
+  rimParts.push(disc)
+  const rim = mergeGeometries(rimParts.map(stripToPN), false)!
 
   geos = {
-    body: bodyAll,
+    body: mergeGeometries([stripToPN(bodyAll), stripToPN(cabin)], false)!,
     glass: mergeGeometries(glassParts.map(stripToPN), false)!,
     cabin,
     trim: mergeGeometries(trimParts.map(stripToPN), false)!,
@@ -386,7 +387,6 @@ export function hatchGeos(): HatchGeos {
     plates,
     tyre,
     rim,
-    disc,
   }
   return geos
 }
@@ -439,7 +439,6 @@ export interface HatchMaterials {
   plate: THREE.MeshStandardMaterial
   tyre: THREE.MeshStandardMaterial
   rim: THREE.MeshStandardMaterial
-  disc: THREE.MeshStandardMaterial
 }
 
 const plateTexCache = new Map<string, THREE.Texture>()
@@ -475,7 +474,6 @@ export function useHatchMaterials(color: string, plate: string): HatchMaterials 
       plate: new THREE.MeshStandardMaterial({ map: pt, roughness: 0.45 }),
       tyre: new THREE.MeshStandardMaterial({ color: '#17181a', roughness: 0.88 }),
       rim: new THREE.MeshStandardMaterial({ color: '#b8bdc2', roughness: 0.28, metalness: 1 }),
-      disc: new THREE.MeshStandardMaterial({ color: '#4c4f52', roughness: 0.5, metalness: 0.8 }),
     }
   }, [color, plate])
   useEffect(() => {

@@ -3,6 +3,8 @@ import { CONTENT, scenarioById } from '../../scenarios'
 import type { Step } from '../../engine/types'
 import { useNav } from '../../state/nav'
 import { IconBack } from '../components/Icons'
+import { OBJECTIVES, QUESTIONS, RULE_CARDS, SCENARIO_LOOP } from '../../learning/bank'
+import { REVIEW_STATUS_LABELS, SKILL_LABELS, THEORY_CATEGORY_LABELS, type SkillId, type TheoryQuestion } from '../../learning/types'
 
 /**
  * Faglig gjennomgang — every player-facing text, rule reference and correct
@@ -156,7 +158,189 @@ export function ReviewScreen() {
             </section>
           )
         })}
+
+        <TheoryReview />
+        <RuleCardReview />
+        <PracticeCriteria />
+        <Boundaries />
       </div>
     </div>
+  )
+}
+
+const H2 = ({ children, id }: { children: React.ReactNode; id: string }) => (
+  <h2 id={id} className="display-tight mt-16 text-[34px]">
+    {children}
+  </h2>
+)
+
+function download() {
+  const data = { exportedAt: new Date().toISOString(), questions: QUESTIONS, objectives: OBJECTIVES, ruleCards: RULE_CARDS, scenarioLoops: SCENARIO_LOOP, scenarios: CONTENT }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'kjor-faglig-innhold.json'
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+function TheoryReview() {
+  const counts = QUESTIONS.reduce<Record<string, number>>((m, q) => ((m[q.professionalReviewStatus] = (m[q.professionalReviewStatus] ?? 0) + 1), m), {})
+  const uncertain = QUESTIONS.filter((q) => q.sourceMetadata.some((s) => s.confidence === 'uncertain')).length
+  return (
+    <section>
+      <H2 id="teori">Teorispørsmål ({QUESTIONS.length})</H2>
+      <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[#444]">
+        Alle spørsmål er utkast. Status endres bare når en trafikklærer har vurdert spørsmålet (navn og dato registreres i <code className="rounded bg-black/5 px-1">reviewHistory</code>
+        ). Kilder merket <b className="text-[#c0392b]">«må verifiseres»</b> er ikke kontrollert mot primærkilden.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
+        {Object.entries(counts).map(([k, n]) => (
+          <span key={k} className="rounded-full bg-white px-3 py-1 font-bold ring-1 ring-black/10">
+            {REVIEW_STATUS_LABELS[k as TheoryQuestion['professionalReviewStatus']]}: {n}
+          </span>
+        ))}
+        <span className="rounded-full bg-[#fff1ef] px-3 py-1 font-bold text-[#c0392b] ring-1 ring-[#c0392b]/20">Med usikker kilde: {uncertain}</span>
+        <button className="rounded-full bg-[#14171c] px-3 py-1 font-bold print:hidden" onClick={download}>
+          <span className="text-white">Last ned alt faglig innhold (JSON)</span>
+        </button>
+      </div>
+      <div className="mt-6 space-y-4">
+        {QUESTIONS.map((q) => (
+          <article key={q.id} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#888]">
+              <span>{q.id}</span>
+              <span>· v{q.version}</span>
+              <span>· {THEORY_CATEGORY_LABELS[q.category]}</span>
+              <span>· {q.topic} / {q.subtopic}</span>
+              <span>· {q.questionType}</span>
+              <span>· vanskelighet {q.difficulty}/3</span>
+              <span className="rounded-full bg-[#fdecea] px-2 py-0.5 text-[#c0392b]">{REVIEW_STATUS_LABELS[q.professionalReviewStatus]}</span>
+            </div>
+            <div className="mt-2 text-[18px] font-extrabold">{q.prompt}</div>
+            {q.imageOrSceneReference && (
+              <div className="text-[12px] text-[#777]">
+                Visuelt: {q.imageOrSceneReference.kind} ·{' '}
+                {q.imageOrSceneReference.kind === 'sign' ? q.imageOrSceneReference.sign : q.imageOrSceneReference.kind === 'diagram' ? q.imageOrSceneReference.diagram : q.imageOrSceneReference.scenarioId}
+              </div>
+            )}
+            <ol className="mt-3 space-y-1 text-[14px]">
+              {q.answerOptions.map((o, k) => {
+                const right = Array.isArray(q.correctAnswer) ? null : q.correctAnswer === o.id
+                const pos = Array.isArray(q.correctAnswer) ? q.correctAnswer.indexOf(o.id) + 1 : null
+                return (
+                  <li key={o.id} className={right ? 'font-bold text-[#1e8e5a]' : ''}>
+                    {pos ? `${pos}. ` : `${String.fromCharCode(65 + k)}. `}
+                    {o.text} {right && '✓ riktig'}
+                    {q.misconception?.[o.id] && <div className="ml-5 text-[12.5px] font-normal text-[#8a6d00]">Misforståelse: {q.misconception[o.id]}</div>}
+                  </li>
+                )
+              })}
+            </ol>
+            <p className="mt-3 text-[14px] text-[#333]">
+              <b>Forklaring:</b> {q.explanation}
+            </p>
+            <div className="mt-2 text-[12.5px] text-[#666]">
+              <b>Kilder:</b>{' '}
+              {q.sourceMetadata.map((s, k) => (
+                <span key={k}>
+                  {k > 0 && ' · '}
+                  <a href={s.url} className="underline" target="_blank" rel="noreferrer">
+                    {s.publisher}: {s.section ?? s.title}
+                  </a>{' '}
+                  <span className={s.confidence === 'checked' ? 'text-[#1e8e5a]' : 'text-[#c0392b]'}>({s.confidence === 'checked' ? 'sjekket av utvikler mot Lovdata' : 'må verifiseres'})</span>
+                </span>
+              ))}
+            </div>
+            <div className="mt-1 text-[12.5px] text-[#666]">
+              <b>Koblet til:</b> {q.linkedScenarioIds.map((id) => CONTENT[id]?.title ?? id).join(', ')} · <b>Læringsmål:</b>{' '}
+              {q.learningObjectiveIds.map((id) => OBJECTIVES.find((o) => o.id === id)?.text ?? id).join(' / ')} · <b>Ferdigheter:</b>{' '}
+              {(Object.keys(q.skills) as SkillId[]).map((s) => SKILL_LABELS[s]).join(', ')}
+            </div>
+            <div className="mt-3 rounded-xl bg-[#f6f4ef] p-3 text-[12.5px] text-[#555]">
+              Vurdering: ☐ Godkjent ☐ Må revideres — Kommentar: ____________________ · Navn/dato: ____________
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function RuleCardReview() {
+  return (
+    <section>
+      <H2 id="regelkort">«Lær regelen»-kort</H2>
+      <p className="mt-3 max-w-2xl text-[15px] text-[#444]">Vises i beslutningspanelet og etter hvert scenario. Én regel, én skisse, én kilde.</p>
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        {Object.entries(RULE_CARDS).map(([id, r]) => (
+          <div key={id} className="rounded-2xl bg-white p-5 ring-1 ring-black/5">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-[#888]">{CONTENT[id]?.title}</div>
+            <div className="mt-1 text-[18px] font-extrabold">{r.title}</div>
+            <p className="mt-1 text-[14px] text-[#333]">{r.body}</p>
+            <div className="mt-2 text-[12px] text-[#777]">
+              Kilde: {r.source.section ?? r.source.title} <span className={r.source.confidence === 'checked' ? 'text-[#1e8e5a]' : 'text-[#c0392b]'}>({r.source.confidence === 'checked' ? 'sjekket' : 'må verifiseres'})</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function PracticeCriteria() {
+  const rows: Array<[string, string, string]> = [
+    ['Observasjon', 'Så til høyre (E / «Se ▶») før det uoversiktlige krysset', 'Mangler: alvorlig (−50)'],
+    ['Observasjon', 'Så til venstre før svingen', 'Mangler: mindre (−20)'],
+    ['Fartstilpasning', 'Maks fart siste 9 m før krysset ≤ 22 km/t', 'Over: alvorlig (−35)'],
+    ['Fartstilpasning', 'Over 33 km/t i mer enn 1 s (fartsgrense 30)', 'Mindre (−15)'],
+    ['Fartstilpasning', 'Retardasjon > 6,2 m/s² i mer enn 0,4 s', 'Mindre: brå oppbremsing (−15)'],
+    ['Plassering', 'Over midtlinjen > 0,8 s / helt ute ved kanten', 'Alvorlig (−35) / mindre (−15)'],
+    ['Plassering', 'Snittavvik fra feltets midte > 0,6 m', 'Mindre (−20)'],
+    ['Plassering', 'Stans inntil høyre kant i stoppsonen', 'Ellers mindre (−15)'],
+    ['Trafikkregler', 'Tegn (blinklys) i god tid før svingen', 'Mangler: mindre (−15)'],
+    ['Trafikkregler', 'Vikeplikt ved venstresving for bil fra høyre (§ 7 nr. 2): bilen må ikke bremse for deg', 'Alvorlig (−35), totalscore maks 55'],
+    ['Trafikkregler', 'Vikeplikt for gående når du svinger (§ 7 nr. 3)', 'Alvorlig (−35), totalscore maks 55'],
+    ['Alle', 'Kollisjon / nesten-påkjørsel', 'Farlig – kjøringen avsluttes'],
+  ]
+  return (
+    <section>
+      <H2 id="ovelse">Øvelseskjøring – vurderingskriterier</H2>
+      <p className="mt-3 max-w-2xl text-[15px] text-[#444]">
+        Grensene er utviklerens forslag og må vurderes av trafikklærer. De ligger i <code className="rounded bg-black/5 px-1">src/practice/session.ts</code> og er dekket av automatiske tester.
+      </p>
+      <table className="mt-5 w-full rounded-2xl bg-white text-left text-[14px] ring-1 ring-black/5">
+        <thead>
+          <tr className="text-[12px] uppercase tracking-wider text-[#888]">
+            <th className="p-3">Område</th>
+            <th className="p-3">Kriterium</th>
+            <th className="p-3">Konsekvens</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, k) => (
+            <tr key={k} className="border-t border-black/5 align-top">
+              {r.map((c, j) => (
+                <td key={j} className={`p-3 ${j === 0 ? 'font-bold' : ''}`}>
+                  {c}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
+function Boundaries() {
+  return (
+    <section className="mb-10 mt-16 rounded-3xl bg-[#14171c] p-6 text-white md:p-8">
+      <div className="text-[12px] font-bold uppercase tracking-widest text-[#ffd400]">Avgrensning</div>
+      <p className="mt-2 text-[15px] leading-relaxed text-white/80">
+        KJØR er et treningsverktøy. Det erstatter ikke obligatorisk opplæring, kjøretimer med trafikklærer, førstehjelpskurs, mørkekjøring eller den offisielle
+        førerprøven. Poeng og vurderinger er læringspoeng i spillet og er ikke en prognose for teoriprøven eller førerprøven.
+      </p>
+    </section>
   )
 }
