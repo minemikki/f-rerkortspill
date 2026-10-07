@@ -24,6 +24,10 @@ import {
   useRaf,
 } from '../play/Overlays'
 import { ResultScreen } from '../play/ResultScreen'
+import { LearnLoop } from '../learn/LearnLoop'
+import { SCENARIO_LOOP } from '../../learning/bank'
+import type { SkillDelta } from '../../learning/mastery'
+import { useLearning } from '../../state/learning'
 
 const ScenarioCanvas = lazy(() => import('../../three/GameScene').then((m) => ({ default: m.ScenarioCanvas })))
 
@@ -44,6 +48,8 @@ function PlaySession({ scenarioId, onRestart }: { scenarioId: string; onRestart:
   const completeScenario = useProgress((s) => s.completeScenario)
   const [summary, setSummary] = useState<CompletionSummary | null>(null)
   const [showResult, setShowResult] = useState(false)
+  const [learn, setLearn] = useState<SkillDelta[] | null>(null)
+  const scenarioDone = useLearning((st) => st.scenarioDone)
   const [impact, setImpact] = useState(0)
   const [shakeScope, animateShake] = useAnimate()
   const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number; ok: boolean | null }>>([])
@@ -150,10 +156,12 @@ function PlaySession({ scenarioId, onRestart }: { scenarioId: string; onRestart:
       committed.current = true
       const s = completeScenario(ui.result)
       setSummary(s)
-      const t = setTimeout(() => setShowResult(true), 1100)
+      const applied = scenarioDone(ui.result)
+      const hasLoop = !!SCENARIO_LOOP[scenarioId]
+      const t = setTimeout(() => (hasLoop ? setLearn(applied) : setShowResult(true)), 1100)
       return () => clearTimeout(t)
     }
-  }, [ui.phase, ui.result, completeScenario])
+  }, [ui.phase, ui.result, completeScenario, scenarioDone, scenarioId])
 
   /* ───── inputs ───── */
   const choose = useCallback(
@@ -194,7 +202,7 @@ function PlaySession({ scenarioId, onRestart }: { scenarioId: string; onRestart:
           style={{ filter: inStep ? 'saturate(0.6) brightness(0.92)' : phase === 'replay' ? 'saturate(0.75) contrast(1.05)' : 'none' }}
         >
           <Suspense fallback={<div className="grid h-full place-items-center text-fog">Laster …</div>}>
-            <ScenarioCanvas runner={runner} onSimEvents={onSimEvents} onUIEvents={onUIEvents} />
+            <ScenarioCanvas runner={runner} onSimEvents={onSimEvents} onUIEvents={onUIEvents} paused={!!learn || showResult} />
           </Suspense>
         </div>
       </div>
@@ -233,6 +241,19 @@ function PlaySession({ scenarioId, onRestart }: { scenarioId: string; onRestart:
         )}
       </AnimatePresence>
       <ImpactFlash trigger={impact} />
+
+      <AnimatePresence>
+        {learn && !showResult && (
+          <LearnLoop
+            scenarioId={scenarioId}
+            appliedDeltas={learn}
+            onDone={() => {
+              setLearn(null)
+              setShowResult(true)
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showResult && ui.result && summary && (

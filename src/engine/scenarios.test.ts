@@ -97,3 +97,47 @@ describe.each(SCENARIOS.map((s) => [s.id, s] as const))('%s', (id, def) => {
     expect(r.ui.phase).toBe('complete')
   })
 })
+
+describe('learn-mode theory panel (hold + hint)', () => {
+  const s1 = SCENARIOS.find((s) => s.id === 's1-hoyreregel')!
+  const toStep = () => {
+    const r = new ScenarioRunner(s1)
+    for (let i = 0; i < 60 * 60 && r.ui.phase !== 'step'; i++) r.update(1 / 60)
+    return r
+  }
+
+  test('opening the panel freezes time during a step', () => {
+    const r = toStep()
+    expect(r.ui.phase).toBe('step')
+    const t0 = r.now
+    const s0 = r.sim.t
+    r.setHold(true)
+    for (let i = 0; i < 600; i++) r.update(1 / 60) // 10 s with the panel open
+    expect(r.now).toBe(t0)
+    expect(r.sim.t).toBe(s0)
+    expect(r.ui.phase).toBe('step') // no timeout while reading
+    r.setHold(false)
+    r.update(1 / 60)
+    expect(r.now).toBeGreaterThan(t0)
+  })
+
+  test('a hinted correct answer scores lower than an unhinted one', () => {
+    const finish = (hint: boolean) => {
+      const r = toStep()
+      if (hint) {
+        r.setHold(true)
+        r.setHold(false)
+      }
+      r.choose('wait')
+      for (let i = 0; i < 60 * 90 && r.ui.phase !== 'complete'; i++) {
+        r.update(1 / 60)
+        if (r.ui.phase === 'feedback' && r.ui.feedback?.blocking) r.continue()
+      }
+      return r.ui.result!
+    }
+    const plain = finish(false)
+    const hinted = finish(true)
+    expect(hinted.total).toBeLessThan(plain.total)
+    expect(hinted.steps[0].xp).toBeLessThan(plain.steps[0].xp)
+  })
+})

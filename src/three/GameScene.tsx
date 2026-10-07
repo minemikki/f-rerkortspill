@@ -241,6 +241,7 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
   const init = useRef(false)
   const fovRef = useRef(50)
   const offY = useRef(0)
+  const offX = useRef(0)
   const accS = useRef(0)
   const playerIdx = useMemo(() => runner.sim.actors.findIndex((a) => a.def.id === 'player'), [runner])
 
@@ -296,7 +297,7 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
           const a = runner.sim.byId.get(id)
           if (a) maxD = Math.max(maxD, Math.hypot(a.view.x - pv.x, a.view.z - pv.z))
         }
-        const w = portrait ? 0.55 : 0.25
+        const w = portrait ? 0.55 : 0.35
         desiredLook.x += (cx - desiredLook.x) * w
         desiredLook.z += (cz - desiredLook.z) * w
         if (portrait) {
@@ -362,12 +363,20 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
       else if (runner.phase === 'step' && ui.step?.kind === 'spot') targetOff = -0.06
       else if (runner.phase === 'feedback' && ui.feedback?.blocking) targetOff = 0.2
     }
-    offY.current += (targetOff - offY.current) * (1 - Math.exp(-dt * 4))
+    // Desktop: the decision panel sits on the right → slide the frame so the action stays left of it
+    let targetOffX = 0
+    if (!portrait && size.width >= 768) {
+      const ui = runner.ui
+      if ((runner.phase === 'step' && ui.step?.kind === 'choice') || (runner.phase === 'feedback' && ui.feedback?.blocking)) targetOffX = 0.16
+    }
+    offY.current += (targetOff - offY.current) * (snap || 1 - Math.exp(-dt * 4))
+    offX.current += (targetOffX - offX.current) * (snap || 1 - Math.exp(-dt * 4))
     const w = size.width
     const hgt = size.height
-    if (Math.abs(offY.current) > 0.002) cam.setViewOffset(w, hgt, 0, offY.current * hgt, w, hgt)
+    const offActive = Math.abs(offY.current) > 0.002 || Math.abs(offX.current) > 0.002
+    if (offActive) cam.setViewOffset(w, hgt, offX.current * w, offY.current * hgt, w, hgt)
     else if (cam.view) cam.clearViewOffset()
-    if (Math.abs(cam.fov - fovRef.current) > 0.01 || Math.abs(offY.current) > 0.002 || cam.view) {
+    if (Math.abs(cam.fov - fovRef.current) > 0.01 || offActive || cam.view) {
       cam.fov = fovRef.current
       cam.updateProjectionMatrix()
     }
@@ -475,10 +484,13 @@ export function ScenarioCanvas({
   runner,
   onSimEvents,
   onUIEvents,
+  paused = false,
 }: {
   runner: ScenarioRunner
   onSimEvents: (e: SimEvent[]) => void
   onUIEvents: (e: UIEvent[]) => void
+  /** stop rendering while a full-screen overlay covers the scene (saves battery/GPU) */
+  paused?: boolean
 }) {
   const def = runner.def
   const mood = MOODS[def.mood]
@@ -520,6 +532,7 @@ export function ScenarioCanvas({
           }
         }
       }}
+      frameloop={paused ? 'never' : 'always'}
       onPointerMissed={() => runner.tap(null)}
       style={{ touchAction: 'none' }}
     >

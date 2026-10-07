@@ -1,4 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { RULE_CARDS } from '../../learning/bank'
+import { DiagramSvg } from '../learn/Diagram'
+import { RulePanel } from '../learn/RulePanel'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RunnerUI, ScenarioRunner } from '../../engine/runner'
 import type { ScenarioContent, ScenarioDef } from '../../engine/types'
@@ -246,6 +249,12 @@ export function ChoiceOverlay({ ui, runner, content, onChoose }: { ui: RunnerUI;
   const step = ui.step!
   const sc = content.steps[step.id]
   const order = useMemo(() => seededOrder(step.options, step.id + content.id), [step.options, step.id, content.id])
+  const [theory, setTheory] = useState(false)
+  const toggleTheory = (on: boolean) => {
+    runner.setHold(on)
+    setTheory(on)
+  }
+  useEffect(() => () => runner.setHold(false), [runner])
   return (
     <motion.div className="absolute inset-0 z-30 flex flex-col justify-end md:items-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.25 } }}>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[62%] bg-gradient-to-t from-ink via-ink/75 to-transparent md:h-[30%] md:via-ink/30" />
@@ -257,6 +266,23 @@ export function ChoiceOverlay({ ui, runner, content, onChoose }: { ui: RunnerUI;
             <TimerBar runner={runner} startedAt={step.startedAt} limit={step.timeLimit} />
           </div>
         </motion.div>
+        <AnimatePresence>
+          {theory && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 rounded-2xl bg-ink-2/90 p-4 ring-1 ring-white/10">
+                <RulePanel scenarioId={content.id} compact />
+                <button className="mt-3 text-[12px] font-bold text-signal" onClick={() => toggleTheory(false)}>
+                  Lukk og velg ↓
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="mt-5 flex flex-col gap-3">
           {order.map((id, i) => (
             <motion.button
@@ -272,6 +298,24 @@ export function ChoiceOverlay({ ui, runner, content, onChoose }: { ui: RunnerUI;
             </motion.button>
           ))}
         </div>
+        {RULE_CARDS[content.id] && !theory && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            onClick={() => toggleTheory(true)}
+            className="mt-4 flex min-h-[52px] w-full items-center gap-3 rounded-2xl bg-white/[0.04] px-3 py-2 text-left ring-1 ring-white/8 hover:bg-white/[0.08]"
+          >
+            <span className="h-10 w-10 shrink-0 overflow-hidden rounded-xl">
+              <DiagramSvg id={RULE_CARDS[content.id].diagram} />
+            </span>
+            <span className="flex-1">
+              <span className="block text-[13px] font-extrabold uppercase tracking-[0.06em]">Lær regelen</span>
+              <span className="block text-[11.5px] text-fog">Teori koblet til scenarioet · pauser · gir færre poeng</span>
+            </span>
+            <span className="text-fog">›</span>
+          </motion.button>
+        )}
       </div>
       <KeyChoice order={order} onChoose={onChoose} />
     </motion.div>

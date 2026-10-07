@@ -98,6 +98,10 @@ export class ScenarioRunner {
   timeScale = 0
   private targetScale = 0
   private realT = 0
+  /** learn mode: theory panel open → the world holds still */
+  private held = false
+  /** steps where the learner opened the theory panel before answering */
+  private hinted = new Set<string>()
   private phaseStart = 0
   private nextStep = 0
   private active: ActiveStep | null = null
@@ -151,6 +155,26 @@ export class ScenarioRunner {
     return e
   }
 
+  /**
+   * Learn mode only: open/close the "Lær regelen" panel during a step.
+   * Time freezes while it is open, and the step is marked as hinted
+   * (a hinted first attempt scores lower — knowing where to look is the skill).
+   */
+  setHold(on: boolean) {
+    if (on && this.phase === 'step' && this.active) {
+      this.hinted.add(this.active.step.id)
+      this.held = true
+    } else this.held = false
+  }
+
+  get isHeld() {
+    return this.held
+  }
+
+  wasHinted(stepId: string) {
+    return this.hinted.has(stepId)
+  }
+
   get now() {
     return this.realT
   }
@@ -163,6 +187,7 @@ export class ScenarioRunner {
   /* ───────────── main loop ───────────── */
 
   update(dtReal: number) {
+    if (this.held) return
     const dt = Math.min(dtReal, 0.1)
     this.realT += dt
     const k = 1 - Math.exp(-dt * 7)
@@ -553,6 +578,10 @@ export class ScenarioRunner {
       xp: outcome.xp,
       badge: outcome.badge,
       attempts: attempt,
+    }
+    if (this.hinted.has(step.id) && attempt === 1) {
+      for (const c of step.tests) r.scores[c] = (r.scores[c] ?? 0) * 0.8
+      r.xp = Math.round(r.xp * 0.6)
     }
     if (prev && attempt > 1) {
       // retries teach, but the first attempt counts most
