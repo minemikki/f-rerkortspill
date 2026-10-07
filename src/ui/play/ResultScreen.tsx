@@ -62,7 +62,7 @@ export function ResultScreen({
     return () => t.forEach(clearTimeout)
   }, [result.stars, levelUp])
 
-  const headline = def.boss ? (result.total >= 65 ? 'Boss beseiret' : 'Boss fullført') : result.stars >= 3 ? 'Perfekt kjørt' : result.stars >= 2 ? 'Godt kjørt' : 'Fullført'
+  const headline = def.boss ? (result.total >= 65 ? 'Boss beseiret' : 'Boss fullført') : result.stars >= 3 ? 'Perfekt kjørt' : result.stars >= 2 ? 'Godt kjørt' : result.stars === 1 ? 'Fullført' : 'Ikke helt ennå'
   const cats = CATEGORIES.filter((c) => result.categories[c] !== undefined)
 
   return (
@@ -204,13 +204,27 @@ export function ResultScreen({
 
         {/* actions */}
         <motion.div className="mt-5 flex flex-col gap-3" initial={{ y: 20, opacity: 0 }} animate={stage >= 3 ? { y: 0, opacity: 1 } : {}} transition={{ duration: 0.6, ease, delay: 0.2 }}>
-          <button className="btn btn-primary h-[58px] w-full text-[16px]" onClick={hasNext ? onNext : onMap}>
-            {hasNext ? 'Neste nivå' : 'Til kartet'} <IconArrow size={20} />
-          </button>
-          <div className="flex gap-3">
-            <button className="btn btn-ghost h-[48px] flex-1 text-[13px]" onClick={onRetry}>
-              <IconRetry size={18} /> Kjør igjen
+          {result.stars === 0 ? (
+            <button className="btn btn-primary h-[58px] w-full text-[16px]" onClick={onRetry}>
+              <IconRetry size={20} /> Prøv nivået igjen
             </button>
+          ) : (
+            <button className="btn btn-primary h-[58px] w-full text-[16px]" onClick={hasNext ? onNext : onMap}>
+              {hasNext ? 'Neste nivå' : 'Til kartet'} <IconArrow size={20} />
+            </button>
+          )}
+          <div className="flex gap-3">
+            {result.stars === 0 ? (
+              hasNext && (
+                <button className="btn btn-ghost h-[48px] flex-1 text-[13px]" onClick={onNext}>
+                  Neste nivå
+                </button>
+              )
+            ) : (
+              <button className="btn btn-ghost h-[48px] flex-1 text-[13px]" onClick={onRetry}>
+                <IconRetry size={18} /> Kjør igjen
+              </button>
+            )}
             {hasNext && (
               <button className="btn btn-ghost h-[48px] flex-1 text-[13px]" onClick={onMap}>
                 Kart

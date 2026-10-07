@@ -473,18 +473,25 @@ export class ScenarioRunner {
     const first = this.sim.history[0]?.t ?? o.freezeT
     const from = Math.max(first, o.freezeT - REPLAY_LEAD)
     this.replay = { from, to: o.freezeT, t: from }
-    this.camera = o.outcome.replayShot ?? this.autoReplayShot(o.outcome.highlight ?? [])
+    this.camera = o.outcome.replayShot ?? this.autoReplayShot(o.outcome.highlight ?? [], from)
     this.highlights = o.outcome.highlight ?? []
     this.setPhase('replay')
     this.showFeedback(true)
   }
 
-  private autoReplayShot(highlight: string[]): CameraShot {
-    // Steep, high shot over the conflict point — top-down views make the
-    // spatial relation (who was where) obvious, also on tall phone screens.
+  private autoReplayShot(highlight: string[], from?: number): CameraShot {
+    // Steep, high shot over the conflict — framing covers where the actors were
+    // both at the start of the replay and at the near-miss, so nobody leaves the frame.
     const p = this.sim.get('player').view
-    const others = highlight.map((id) => this.sim.get(id).view)
-    const pts = [p, ...others]
+    const ids = ['player', ...highlight]
+    const idx = ids.map((id) => this.sim.actors.findIndex((a) => a.def.id === id))
+    const start = from !== undefined ? this.sim.frameAt(from) : null
+    const pts = idx.flatMap((i) => {
+      const now = this.sim.actors[i].view
+      const then = start ? start[i] : now
+      // weight the near-miss moment more than the start
+      return [now, now, then]
+    })
     const cx = pts.reduce((a, v) => a + v.x, 0) / pts.length
     const cz = pts.reduce((a, v) => a + v.z, 0) / pts.length
     const spread = Math.max(...pts.map((v) => Math.hypot(v.x - cx, v.z - cz)))
