@@ -243,7 +243,7 @@ function MapNode({
             </div>
           ) : n.unlocked ? (
             n.done ? (
-              <span className="display text-[30px]">{index + 1}</span>
+              <span className="display text-[30px]" style={{ color: "#0a0e13" }}>{index + 1}</span>
             ) : (
               <IconPlay size={28} />
             )

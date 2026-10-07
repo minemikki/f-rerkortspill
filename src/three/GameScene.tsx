@@ -269,6 +269,35 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
       desiredPos.set(pv.x - fx * back + rx * side, up, pv.z - fz * back + rz * side)
       desiredLook.set(pv.x + fx * ahead, 0.8, pv.z + fz * ahead)
       fov = shot.fov ?? 50
+      // Director: keep the step's focus actors in frame. Narrow (portrait) screens
+      // swing the look target towards them and pull back a little.
+      const step = runner.phase === 'step' || runner.phase === 'outcome' ? currentStepFocus(runner) : null
+      if (step && step.length) {
+        let cx = 0
+        let cz = 0
+        let maxD = 0
+        for (const id of step) {
+          const a = runner.sim.byId.get(id)
+          if (!a) continue
+          cx += a.view.x
+          cz += a.view.z
+        }
+        cx /= step.length
+        cz /= step.length
+        for (const id of step) {
+          const a = runner.sim.byId.get(id)
+          if (a) maxD = Math.max(maxD, Math.hypot(a.view.x - pv.x, a.view.z - pv.z))
+        }
+        const w = portrait ? 0.55 : 0.25
+        desiredLook.x += (cx - desiredLook.x) * w
+        desiredLook.z += (cz - desiredLook.z) * w
+        if (portrait) {
+          const extra = Math.min(10, maxD * 0.35)
+          desiredPos.x -= fx * extra
+          desiredPos.z -= fz * extra
+          desiredPos.y += extra * 0.6
+        }
+      }
     } else if (shot.kind === 'fixed') {
       desiredPos.set(...shot.pos)
       desiredLook.set(...shot.target)
@@ -335,6 +364,13 @@ function CameraRig({ runner, focus, events }: { runner: ScenarioRunner; focus: R
     focus.current.set(pv.x, 0, pv.z)
   })
   return null
+}
+
+function currentStepFocus(runner: ScenarioRunner): string[] | null {
+  const id = runner.ui.step?.id ?? null
+  if (!id || runner.phase !== 'step') return null
+  const st = runner.def.steps.find((s) => s.id === id)
+  return st?.focus ?? null
 }
 
 /* ───────────── anchors (DOM labels over actors) ───────────── */

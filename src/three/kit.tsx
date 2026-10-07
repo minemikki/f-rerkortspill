@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import * as THREE from 'three'
 import {
   asphaltTexture,
@@ -555,7 +556,7 @@ export function Bench({ x, z, rot = 0 }: { x: number; z: number; rot?: number })
  */
 export function Mountains({ radius = 300, tint = '#8a9aa8', haze = '#dfe6ea' }: { radius?: number; tint?: string; haze?: string }) {
   const geo = useMemo(() => {
-    const segs = 220
+    const segs = 320
     const pos: number[] = []
     const col: number[] = []
     const idx: number[] = []
@@ -575,14 +576,25 @@ export function Mountains({ radius = 300, tint = '#8a9aa8', haze = '#dfe6ea' }: 
     for (let layer = 0; layer < 2; layer++) {
       const r = radius + layer * -70
       const dark = layer === 1 ? new THREE.Color('#5d6d5c') : base.clone()
+      // smoothed height profile (no needle-thin spikes where octaves line up)
+      let hs = Array.from({ length: segs + 1 }, (_, i) => height((i / segs) * Math.PI * 2, layer))
+      for (let pass = 0; pass < 3; pass++) {
+        hs = hs.map((_, i) => {
+          const a0 = hs[(i - 1 + segs) % segs]
+          const a1 = hs[i]
+          const a2 = hs[(i + 1) % segs]
+          return (a0 + a1 * 2 + a2) / 4
+        })
+      }
       for (let i = 0; i <= segs; i++) {
         const a = (i / segs) * Math.PI * 2
-        const h = height(a, layer)
+        const h = Math.min(hs[i], layer === 0 ? 64 : 34)
         const x = Math.cos(a) * r
         const z = Math.sin(a) * r
         pos.push(x, -2, z, x, h, z)
         const bottom = dark.clone().lerp(hz, layer === 0 ? 0.6 : 0.45)
-        const topC = layer === 0 && h > 48 ? snow.clone().lerp(hz, 0.25) : dark.clone().lerp(hz, layer === 0 ? 0.3 : 0.18)
+        const snowK = layer === 0 ? THREE.MathUtils.smoothstep(h, 42, 66) : 0
+        const topC = dark.clone().lerp(hz, layer === 0 ? 0.3 : 0.18).lerp(snow.clone().lerp(hz, 0.25), snowK)
         col.push(bottom.r, bottom.g, bottom.b, topC.r, topC.g, topC.b)
         if (i < segs) {
           const o = v + i * 2
@@ -616,4 +628,71 @@ export function forestBand(x0: number, x1: number, z0: number, z1: number, n: nu
     out.push({ x: x0 + r() * (x1 - x0), z: z0 + r() * (z1 - z0), s: 0.9 + r() * 0.8, type: r() < 0.75 ? 'spruce' : 'birch' })
   }
   return out
+}
+
+/**
+ * Merges every static (non-instanced) mesh below it into one mesh per
+ * material + shadow flags. Cuts hundreds of draw calls from the
+ * environments down to a few dozen — important on mid-range phones.
+ * Originals are hidden, not removed, so React keeps ownership of them.
+ */
+export function MergeStatic({ children }: { children: React.ReactNode }) {
+  const root = useRef<THREE.Group>(null)
+  const merged = useRef<THREE.Group>(null)
+  useLayoutEffect(() => {
+    const g = root.current
+    const out = merged.current
+    if (!g || !out) return
+    g.updateMatrixWorld(true)
+    const inv = new THREE.Matrix4().copy(g.matrixWorld).invert()
+    const buckets = new Map<string, { mat: THREE.Material; cast: boolean; recv: boolean; order: number; geos: THREE.BufferGeometry[]; srcs: THREE.Mesh[] }>()
+    g.traverse((o) => {
+      const m = o as THREE.Mesh
+      if (!m.isMesh || (m as unknown as THREE.InstancedMesh).isInstancedMesh || Array.isArray(m.material)) return
+      if (!m.visible) return
+      const mat = m.material as THREE.Material
+      const key = `${mat.uuid}|${m.castShadow}|${m.receiveShadow}|${m.renderOrder}`
+      let b = buckets.get(key)
+      if (!b) {
+        b = { mat, cast: m.castShadow, recv: m.receiveShadow, order: m.renderOrder, geos: [], srcs: [] }
+        buckets.set(key, b)
+      }
+      const geo = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()) as THREE.BufferGeometry
+      for (const name of Object.keys(geo.attributes)) if (name !== 'position' && name !== 'normal' && name !== 'uv') geo.deleteAttribute(name)
+      if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((geo.attributes.position.count) * 2), 2))
+      if (!geo.attributes.normal) geo.computeVertexNormals()
+      geo.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld))
+      b.geos.push(geo)
+      b.srcs.push(m)
+    })
+    const created: THREE.Mesh[] = []
+    buckets.forEach((b) => {
+      if (b.geos.length < 2) {
+        b.geos.forEach((x) => x.dispose())
+        return
+      }
+      const geo = mergeGeometries(b.geos, false)
+      b.geos.forEach((x) => x.dispose())
+      if (!geo) return
+      const mesh = new THREE.Mesh(geo, b.mat)
+      mesh.castShadow = b.cast
+      mesh.receiveShadow = b.recv
+      mesh.renderOrder = b.order
+      out.add(mesh)
+      created.push(mesh)
+      b.srcs.forEach((s) => (s.visible = false))
+    })
+    return () => {
+      created.forEach((m) => {
+        out.remove(m)
+        m.geometry.dispose()
+      })
+    }
+  }, [])
+  return (
+    <>
+      <group ref={root}>{children}</group>
+      <group ref={merged} />
+    </>
+  )
 }

@@ -14,7 +14,7 @@ interface NavState {
   pending: { screen: Screen; scenarioId: string | null } | null
 }
 
-function initialRoute(): { screen: Screen; scenarioId: string | null } {
+export function initialRoute(): { screen: Screen; scenarioId: string | null } {
   if (typeof location !== 'undefined') {
     if (location.hash === '#/faglig') return { screen: 'review', scenarioId: null }
     if (location.hash === '#/kart') return { screen: 'map', scenarioId: null }
@@ -47,3 +47,12 @@ export const useNav = create<NavState>()((set, get) => ({
   },
   _done: () => set({ wiping: false, pending: null }),
 }))
+
+// Support manual URL edits / back-forward between hash routes.
+if (typeof window !== 'undefined') {
+  window.addEventListener('hashchange', () => {
+    const r = initialRoute()
+    const s = useNav.getState()
+    if (r.screen !== s.screen || r.scenarioId !== s.scenarioId) s.go(r.screen, r.scenarioId)
+  })
+}

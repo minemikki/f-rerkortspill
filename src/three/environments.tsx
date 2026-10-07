@@ -17,6 +17,7 @@ import {
   Lamp,
   Mailboxes,
   Mark,
+  MergeStatic,
   Mountains,
   Sidewalk,
   Sign,
@@ -39,7 +40,9 @@ export function Environment({ id, haze }: { id: EnvironmentId; haze: string }) {
   return (
     <>
       <Mountains haze={haze} />
-      <EnvBody id={id} />
+      <MergeStatic>
+        <EnvBody id={id} />
+      </MergeStatic>
     </>
   )
 }

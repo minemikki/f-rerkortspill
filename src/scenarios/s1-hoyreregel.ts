@@ -46,6 +46,7 @@ export const s1: ScenarioDef = {
     {
       id: 'priority',
       kind: 'choice',
+      focus: ['car-right'],
       trigger: { playerS: sPlayer(14.5) },
       tests: ['rules', 'risk'],
       timeLimit: 7,

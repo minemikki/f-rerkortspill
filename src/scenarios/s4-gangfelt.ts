@@ -80,6 +80,7 @@ export const s4: ScenarioDef = {
     {
       id: 'approach',
       kind: 'choice',
+      focus: ['ped'],
       trigger: { playerS: sP(25) },
       tests: ['risk', 'rules', 'observation'],
       timeLimit: 7,

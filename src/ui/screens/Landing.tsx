@@ -138,10 +138,10 @@ export function Landing() {
       {/* ───────── SCORE PREVIEW ───────── */}
       <section className="relative overflow-hidden px-5 py-20 md:px-10 md:py-28">
         <div className="pointer-events-none absolute -right-40 top-10 h-[480px] w-[480px] rounded-full bg-signal/8 blur-3xl" />
-        <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-2 [&>*]:min-w-0">
           <div>
             <div className="eyebrow text-fog">Mer enn rett eller galt</div>
-            <h2 className="display-tight mt-3 text-[clamp(32px,6.5vw,60px)]">
+            <h2 className="display-tight mt-3 text-[clamp(23px,6vw,58px)]">
               Vi belønner risikoforståelse. <span className="text-fog">Ikke pugging.</span>
             </h2>
             <p className="mt-5 max-w-[38ch] text-[17px] leading-relaxed text-mist">

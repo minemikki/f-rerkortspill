@@ -143,6 +143,8 @@ interface StepBase {
   setup?: { commands?: Record<string, SpeedCmd[]>; cues?: Cue[] }
   /** Camera during the interaction. */
   camera?: CameraShot
+  /** Actors the camera must keep in frame during the step (camera "director"). */
+  focus?: string[]
   /** Time scale while waiting for input (default 0.05). */
   slowmo?: number
 }

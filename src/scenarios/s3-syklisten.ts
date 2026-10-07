@@ -86,6 +86,7 @@ export const s3: ScenarioDef = {
     {
       id: 'spot',
       kind: 'spot',
+      focus: ['cyclist'],
       trigger: { playerS: sP(14.5) },
       tests: ['observation', 'risk'],
       timeLimit: 8,

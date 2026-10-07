@@ -178,6 +178,7 @@ export const s5: ScenarioDef = {
     {
       id: 'scan',
       kind: 'spot',
+      focus: ['ped', 'circ'],
       trigger: { playerS: sP(41) },
       tests: ['observation'],
       timeLimit: 10,
@@ -268,6 +269,7 @@ export const s5: ScenarioDef = {
     {
       id: 'blinker',
       kind: 'choice',
+      focus: ['trap'],
       trigger: { playerS: YIELD_S - 0.35 },
       tests: ['rules', 'risk'],
       timeLimit: 7,

@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import type { ActorView } from '../engine/sim'
 import { blobTexture } from './textures'
-import { mat } from './kit'
+import { MergeStatic, mat } from './kit'
 
 /**
  * Stylised low-poly actors. Each model is driven every frame by an
@@ -126,6 +126,7 @@ export function Car({ get, color, parked }: { get: ViewGetter; color: string; pa
     <group>
       <Blob w={2.5} d={5.2} />
       <group ref={bodyRef} position-y={0.0}>
+        <MergeStatic>
         <mesh geometry={rounded(W, 0.72, L, 0.2)} material={body} position-y={0.66} castShadow receiveShadow />
         {/* cabin glass + roof */}
         <mesh geometry={rounded(W - 0.18, 0.62, 2.35, 0.22)} material={glass} position={[0, 1.27, -0.25]} castShadow />
@@ -152,6 +153,7 @@ export function Car({ get, color, parked }: { get: ViewGetter; color: string; pa
         {[-1, 1].map((s) => (
           <mesh key={s} geometry={box} material={body} position={[s * (W / 2 + 0.1), 1.08, 0.75]} scale={[0.2, 0.14, 0.12]} />
         ))}
+        </MergeStatic>
       </group>
       {[
         [0.82, 1.38],
@@ -185,6 +187,7 @@ export function Van({ get, color, parked }: { get: ViewGetter; color: string; pa
     <group>
       <Blob w={2.8} d={6.2} />
       <group ref={bodyRef}>
+        <MergeStatic>
         <mesh geometry={rounded(W, 1.95, L - 0.9, 0.15)} material={body} position={[0, 1.4, -0.45]} castShadow receiveShadow />
         <mesh geometry={rounded(W, 1.0, 1.4, 0.2)} material={body} position={[0, 0.9, L / 2 - 0.75]} castShadow />
         <mesh geometry={rounded(W - 0.1, 0.8, 0.9, 0.12)} material={glass} position={[0, 1.65, L / 2 - 1.15]} rotation-x={-0.35} />
@@ -203,6 +206,7 @@ export function Van({ get, color, parked }: { get: ViewGetter; color: string; pa
         <mesh geometry={box} material={lm.indR} position={[-W / 2 + 0.1, 1.2, -L / 2 + 0.01]} scale={[0.16, 0.14, 0.05]} />
         <mesh geometry={box} material={lm.indL} position={[W / 2 - 0.12, 0.72, L / 2 - 0.02]} scale={[0.18, 0.1, 0.06]} />
         <mesh geometry={box} material={lm.indR} position={[-W / 2 + 0.12, 0.72, L / 2 - 0.02]} scale={[0.18, 0.1, 0.06]} />
+        </MergeStatic>
       </group>
       {[
         [0.88, 1.7],
@@ -236,6 +240,7 @@ export function Bus({ get, color }: { get: ViewGetter; color: string }) {
     <group>
       <Blob w={3.4} d={13} />
       <group ref={bodyRef}>
+        <MergeStatic>
         <mesh geometry={rounded(W, 2.75, L, 0.22)} material={body} position-y={1.75} castShadow receiveShadow />
         {/* window band */}
         <mesh geometry={box} material={glass} position={[0, 2.3, -0.3]} scale={[W + 0.02, 1.05, L - 2.2]} />
@@ -255,6 +260,7 @@ export function Bus({ get, color }: { get: ViewGetter; color: string }) {
         <mesh geometry={box} material={lm.indR} position={[-W / 2 + 0.12, 1.5, -L / 2 + 0.01]} scale={[0.2, 0.2, 0.05]} />
         <mesh geometry={box} material={lm.indL} position={[W / 2 - 0.12, 0.75, L / 2 - 0.02]} scale={[0.2, 0.14, 0.05]} />
         <mesh geometry={box} material={lm.indR} position={[-W / 2 + 0.12, 0.75, L / 2 - 0.02]} scale={[0.2, 0.14, 0.05]} />
+        </MergeStatic>
       </group>
       {[
         [1.08, 3.9],
