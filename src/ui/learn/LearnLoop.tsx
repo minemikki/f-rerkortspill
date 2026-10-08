@@ -64,7 +64,7 @@ export function LearnLoop({ scenarioId, appliedDeltas, onDone }: { scenarioId: s
 
   return (
     <motion.div
-      className="absolute inset-0 z-40 flex justify-center overflow-y-auto bg-ink/80 px-4 pb-[calc(24px+var(--safe-bottom))] pt-[calc(20px+var(--safe-top))] backdrop-blur-md sm:items-center"
+      className="absolute inset-0 z-40 flex justify-center overflow-y-auto bg-ink/55 px-4 pb-[calc(24px+var(--safe-bottom))] pt-[calc(20px+var(--safe-top))] backdrop-blur-[3px] sm:items-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

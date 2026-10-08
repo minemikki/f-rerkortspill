@@ -248,18 +248,40 @@ function Results({ qs, answers, onAgain, onTrain }: { qs: TheoryQuestion[]; answ
 
       <section className="mt-8">
         <div className="eyebrow mb-3 text-[10px] text-fog">Per tema</div>
-        <div className="space-y-2.5">
-          {byCat.map(([cat, e]) => (
-            <div key={cat} className="flex items-center gap-3">
-              <span className="w-40 shrink-0 text-[13px] font-bold sm:w-48">{THEORY_CATEGORY_LABELS[cat]}</span>
-              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/8">
-                <div className={`h-full rounded-full ${e.ok === e.n ? 'bg-go' : e.ok / e.n >= 0.5 ? 'bg-signal' : 'bg-stop'}`} style={{ width: `${(e.ok / e.n) * 100}%` }} />
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {byCat.map(([cat, e]) => {
+            const pct = Math.round((e.ok / e.n) * 100)
+            // the game scenario that trains this category best (most linked questions)
+            const counts = new Map<string, number>()
+            for (const q of qs) if (q.category === cat && q.linkedScenarioIds[0]) counts.set(q.linkedScenarioIds[0], (counts.get(q.linkedScenarioIds[0]) ?? 0) + 1)
+            const train = [...counts.entries()].sort((x, y) => y[1] - x[1])[0]?.[0]
+            const tone = pct === 100 ? 'text-go' : pct >= 50 ? 'text-signal' : 'text-stop'
+            return (
+              <div key={cat} className="rounded-2xl bg-white/[0.035] p-3.5 ring-1 ring-white/8">
+                <div className="flex items-center gap-3">
+                  <span className="min-w-0 flex-1 truncate text-[14px] font-extrabold uppercase tracking-[0.04em]">{THEORY_CATEGORY_LABELS[cat]}</span>
+                  <span className={`num text-[22px] font-black ${tone}`}>{pct} %</span>
+                </div>
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/8">
+                    <div className={`h-full rounded-full ${pct === 100 ? 'bg-go' : pct >= 50 ? 'bg-signal' : 'bg-stop'}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="num w-10 text-right text-[12px] font-bold text-fog">
+                    {e.ok}/{e.n}
+                  </span>
+                </div>
+                {pct < 100 && train && (
+                  <button className="mt-3 flex min-h-[44px] w-full items-center justify-between rounded-xl bg-signal/12 px-3 text-left ring-1 ring-signal/40 hover:bg-signal/20" onClick={() => onTrain(train)}>
+                    <span>
+                      <span className="block text-[12px] font-black uppercase tracking-[0.08em] text-signal">Tren dette</span>
+                      <span className="block text-[12px] text-mist">{CONTENT[train]?.title} – i spillet</span>
+                    </span>
+                    <span className="text-signal">→</span>
+                  </button>
+                )}
               </div>
-              <span className="num w-10 text-right text-[13px] font-bold">
-                {e.ok}/{e.n}
-              </span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </section>
 

@@ -466,14 +466,40 @@ function Report({ a, mode, onAgain, onMap }: { a: Assessment; mode: Mode; onAgai
                 <li key={k} className="flex gap-3 rounded-2xl bg-stop/[0.07] p-3.5 ring-1 ring-stop/20">
                   <span className={`mt-0.5 shrink-0 text-[11px] font-black uppercase ${e.kind === 'minor' ? 'text-signal' : 'text-stop'}`}>{e.kind === 'minor' ? 'Mindre' : e.kind === 'major' ? 'Alvorlig' : 'Farlig'}</span>
                   <span className="flex-1 text-[14px] leading-snug">
-                    {e.text}
-                    <span className="mt-0.5 block text-[11px] text-fog">{AREA_LABELS[e.area]}</span>
+                    <span className="block font-bold">{e.text}</span>
+                    {e.why && (
+                      <span className="mt-1 block text-[13px] text-mist">
+                        <b className="text-snow">Hvorfor det betyr noe:</b> {e.why}
+                      </span>
+                    )}
+                    {e.practice && (
+                      <span className="mt-1 block text-[13px] text-mist">
+                        <b className="text-signal">Øv på:</b> {e.practice}
+                      </span>
+                    )}
+                    <span className="mt-1 block text-[11px] text-fog">{AREA_LABELS[e.area]}</span>
                   </span>
                 </li>
               ))}
             </ul>
           </section>
         )}
+        <section className="mt-6">
+          <div className="eyebrow mb-2 text-[10px] text-ice">Hvor så du? (observasjonsrekkefølge)</div>
+          {a.observations && a.observations.length > 0 ? (
+            <ol className="flex flex-wrap items-center gap-2">
+              {a.observations.map((o, k) => (
+                <li key={k} className="flex items-center gap-2 rounded-full bg-ice/10 px-3 py-1.5 text-[12.5px] font-bold ring-1 ring-ice/30">
+                  <span className="num text-ice">{k + 1}</span>
+                  {o.side === 'right' ? 'Høyre' : 'Venstre'}
+                  <span className="font-semibold text-fog">{o.before > 0 ? `${Math.round(o.before)} m før krysset` : 'i krysset'}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-[13px] text-mist">Ingen hodebevegelser registrert. Bruk «Se ◀ / Se ▶» (Q/E) før kryss.</p>
+          )}
+        </section>
         {good.length > 0 && (
           <section className="mt-6">
             <div className="eyebrow mb-2 text-[10px] text-go">Dette gjorde du bra</div>

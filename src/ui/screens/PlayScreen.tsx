@@ -16,7 +16,7 @@ import {
   IntroCard,
   Letterbox,
   MistakeCard,
-  ReplayBadge,
+  ReplayCaption,
   SpotOverlay,
   Speedo,
   TapRipples,
@@ -158,10 +158,17 @@ function PlaySession({ scenarioId, onRestart }: { scenarioId: string; onRestart:
       setSummary(s)
       const applied = scenarioDone(ui.result)
       const hasLoop = !!SCENARIO_LOOP[scenarioId]
-      const t = setTimeout(() => (hasLoop ? setLearn(applied) : setShowResult(true)), 1100)
+      const t = setTimeout(() => {
+        if (hasLoop) {
+          // keep the world alive behind the learning loop: slow orbit over where it happened
+          const p = runner.sim.get('player').view
+          runner.camera = { kind: 'orbit', target: [p.x, 0, p.z], radius: 17, height: 8.5, angle: p.h + Math.PI * 0.75, speed: 0.045, fov: 48 }
+          setLearn(applied)
+        } else setShowResult(true)
+      }, 1100)
       return () => clearTimeout(t)
     }
-  }, [ui.phase, ui.result, completeScenario, scenarioDone, scenarioId])
+  }, [ui.phase, ui.result, completeScenario, scenarioDone, scenarioId, runner])
 
   /* ───── inputs ───── */
   const choose = useCallback(
@@ -202,7 +209,7 @@ function PlaySession({ scenarioId, onRestart }: { scenarioId: string; onRestart:
           style={{ filter: inStep ? 'saturate(0.6) brightness(0.92)' : phase === 'replay' ? 'saturate(0.75) contrast(1.05)' : 'none' }}
         >
           <Suspense fallback={<div className="grid h-full place-items-center text-fog">Laster …</div>}>
-            <ScenarioCanvas runner={runner} onSimEvents={onSimEvents} onUIEvents={onUIEvents} paused={!!learn || showResult} />
+            <ScenarioCanvas runner={runner} onSimEvents={onSimEvents} onUIEvents={onUIEvents} paused={showResult} />
           </Suspense>
         </div>
       </div>
@@ -213,7 +220,7 @@ function PlaySession({ scenarioId, onRestart }: { scenarioId: string; onRestart:
       <IntroCard show={phase === 'intro'} level={levelIndex + 1} content={content} boss={def.boss} />
       <TopHud ui={ui} visible={showHud && !showResult} onClose={() => setConfirmExit(true)} />
       <Speedo runner={runner} visible={showHud && !inStep && !blocking && !showResult} />
-      <ReplayBadge show={phase === 'replay'} />
+      {phase === 'replay' && <ReplayCaption runner={runner} ui={ui} def={def} content={content} />}
 
       <AnimatePresence>
         {inStep && ui.step!.kind === 'choice' && <ChoiceOverlay key={`c-${ui.step!.id}-${ui.step!.attempt}`} ui={ui} runner={runner} content={content} onChoose={choose} />}

@@ -62,6 +62,11 @@ const INTRO_SECONDS = 2.6
 const IMPACT_SECONDS = 1.15
 const REPLAY_LEAD = 3.2
 const REPLAY_SPEED = 0.6
+/** share of the replay shown from the driver's chase view before the overhead reveal */
+const REPLAY_POV_SHARE = 0.45
+/** freeze-frame on the critical moment (real seconds) */
+const REPLAY_HOLD = 1.1
+const REPLAY_POV: CameraShot = { kind: 'chase', back: 6.8, up: 2.8, ahead: 11, fov: 52 }
 const TOAST_SECONDS = 3.8
 
 interface ActiveStep {
@@ -107,7 +112,15 @@ export class ScenarioRunner {
   private active: ActiveStep | null = null
   private outcome: ActiveOutcome | null = null
   private results = new Map<string, StepResult>()
-  private replay: { from: number; to: number; t: number } | null = null
+  private replay: { from: number; to: number; t: number; hold: number; overhead: CameraShot; fixedShot: boolean } | null = null
+
+  /** Replay progress for the UI captions: p ∈ [0,1], pov = still in the driver's view, frozen = holding on the critical frame. */
+  get replayInfo(): { p: number; pov: boolean; frozen: boolean } | null {
+    const r = this.replay
+    if (!r) return null
+    const p = r.to > r.from ? (r.t - r.from) / (r.to - r.from) : 1
+    return { p, pov: !r.fixedShot && p <= REPLAY_POV_SHARE, frozen: r.t >= r.to }
+  }
   private listeners = new Set<() => void>()
   private uiEvents: UIEvent[] = []
   private pendingComplete: number | null = null
@@ -214,9 +227,13 @@ export class ScenarioRunner {
         break
       case 'replay': {
         const r = this.replay!
-        r.t += dt * REPLAY_SPEED
+        if (r.t < r.to) {
+          r.t = Math.min(r.to, r.t + dt * REPLAY_SPEED)
+          // two camera languages: first what YOU saw (driver chase), then what was THERE (overhead)
+          if (!r.fixedShot && r.t - r.from > (r.to - r.from) * REPLAY_POV_SHARE) this.camera = r.overhead
+        } else r.hold += dt // freeze-frame on the critical moment
         this.replayViews = this.sim.frameAt(r.t)
-        if (r.t >= r.to) {
+        if (r.hold >= REPLAY_HOLD) {
           this.replay = null
           this.replayViews = null
           this.camera = null
@@ -497,8 +514,9 @@ export class ScenarioRunner {
     }
     const first = this.sim.history[0]?.t ?? o.freezeT
     const from = Math.max(first, o.freezeT - REPLAY_LEAD)
-    this.replay = { from, to: o.freezeT, t: from }
-    this.camera = o.outcome.replayShot ?? this.autoReplayShot(o.outcome.highlight ?? [], from)
+    const overhead = o.outcome.replayShot ?? this.autoReplayShot(o.outcome.highlight ?? [], from)
+    this.replay = { from, to: o.freezeT, t: from, hold: 0, overhead, fixedShot: !!o.outcome.replayShot }
+    this.camera = o.outcome.replayShot ?? REPLAY_POV
     this.highlights = o.outcome.highlight ?? []
     this.setPhase('replay')
     this.showFeedback(true)

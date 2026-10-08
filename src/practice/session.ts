@@ -96,7 +96,74 @@ export const AREA_LABELS: Record<Area, string> = {
   trafficRules: 'Trafikkregler',
 }
 
+/**
+ * Coaching text per fault: WHAT happened is the event text, then WHY it
+ * mattered and WHAT to practise. Rule references: Trafikkreglene (Lovdata),
+ * draft — to be reviewed by a trafikklærer with the thresholds (see /#/faglig).
+ */
+export const COACH: Record<string, { why: string; practice: string }> = {
+  approach: {
+    why: 'Hekken skjulte sidevegen. Med den farten hadde du ikke tid til å se deg om – eller til å stanse hvis en bil kom fra høyre.',
+    practice: 'Senk farten tidlig der du ikke ser inn i sidevegen, og se til høyre før du kjører inn i krysset.',
+  },
+  speeding: {
+    why: 'I boligfelt er marginene små. Ved 30 km/t er stopplengden omtrent halvparten av ved 50 km/t.',
+    practice: 'Hold blikket på speedometeret i starten, og la bilen rulle uten gass når du nærmer deg fartsgrensen.',
+  },
+  harsh: {
+    why: 'Brå bremsing kan overraske trafikken bak deg og viser at du så faren sent.',
+    practice: 'Se lenger fram, og slipp gassen i god tid før kryss og svinger.',
+  },
+  'wrongside-a': {
+    why: 'Møtende trafikk forventer ikke å møte deg der – og du får mindre tid hvis noen kommer rundt hjørnet.',
+    practice: 'Sikt mot midten av ditt eget kjørefelt, ikke mot midten av vegen.',
+  },
+  'wrongside-b': {
+    why: 'Etter en venstresving skal du havne i høyre side av den nye vegen. Ellers kommer du rett mot møtende trafikk.',
+    practice: 'Se dit du skal (inn i ditt eget felt) allerede midt i svingen.',
+  },
+  'kerb-a': {
+    why: 'Helt ute ved kanten har du lite rom hvis noen går ut fra fortauet eller en dør åpnes.',
+    practice: 'Hold omtrent en halv meter fra kanten.',
+  },
+  signal: {
+    why: 'Andre trafikanter – også gående – skal kunne se hva du skal gjøre i god tid.',
+    practice: 'Gi tegn før du begynner å bremse ned til svingen.',
+  },
+  yield: {
+    why: 'Når du svinger til venstre, har du vikeplikt for kjøretøy som kommer fra høyre (trafikkreglene § 7 nr. 2). Bilen måtte bremse for deg.',
+    practice: 'Stans før krysset, la bilen fra høyre passere, og sving først når vegen er fri.',
+  },
+  walker: {
+    why: 'Den som svinger, har vikeplikt for gående som skal rett fram (trafikkreglene § 7 nr. 3).',
+    practice: 'Se etter gående i vegen du skal svinge inn i – før du starter svingen.',
+  },
+  lookRight: {
+    why: 'Hekken skjulte sidevegen, og trafikk fra høyre kunne komme uten at du så den.',
+    practice: 'Trykk «Se ▶» (E) når du nærmer deg et uoversiktlig kryss – helst to ganger: tidlig, og like før du kjører inn.',
+  },
+  lookLeft: {
+    why: 'Når du svinger inn i en ny veg, kan det komme trafikk og gående fra venstre også.',
+    practice: 'Se høyre – venstre – høyre før du kjører inn i krysset.',
+  },
+  lane: {
+    why: 'Ujevn plassering gjør det vanskelig for andre å forstå hvor du skal.',
+    practice: 'Se langt fram i ditt eget felt – bilen følger blikket.',
+  },
+  stopPos: {
+    why: 'En bil som står langt ut i vegen tvinger andre til å kjøre rundt.',
+    practice: 'Rull sakte inn mot høyre kant og stans parallelt med den.',
+  },
+  collision: {
+    why: 'En kollisjon betyr at observasjon, fart og vikeplikt sviktet samtidig.',
+    practice: 'Kjør igjen sakte, og øv på å se til begge sider før du kjører inn.',
+  },
+}
+
 export interface DriveEvent {
+  /** WHY it mattered + WHAT to practise (faults only) — see COACH */
+  why?: string
+  practice?: string
   t: number
   area: Area
   /** positive = good practice, negative = fault */
@@ -114,6 +181,13 @@ export interface Instruction {
   at: number
 }
 
+export interface Observation {
+  t: number
+  side: 'left' | 'right'
+  /** metres before the junction edge (negative = already in/after it) */
+  before: number
+}
+
 export interface Assessment {
   areas: Record<Area, number>
   total: number
@@ -122,6 +196,7 @@ export interface Assessment {
   reason: 'stopped' | 'collision' | 'wrong-way' | 'timeout'
   duration: number
   mode: ControlMode
+  observations?: Observation[]
 }
 
 type Seg = 'approach' | 'junction' | 'exit' | 'stopzone' | 'done'
@@ -157,6 +232,14 @@ export class PracticeSession {
   seg: Seg = 'approach'
   finished: Assessment | null = null
   paused = false
+  /**
+   * Where did the player look? Every head check is logged with its distance
+   * to the junction — groundwork for evaluating the observation SEQUENCE
+   * (e.g. right → left → right before entering), not just its presence.
+   */
+  observations: Observation[] = []
+  private lastLook: -1 | 0 | 1 = 0
+  private indicatorHeading: number | null = null
 
   private acc = 0
   private said = new Set<string>()
@@ -193,12 +276,13 @@ export class PracticeSession {
     this.instruction = { id, text, coach, at: this.t }
   }
 
-  private log(area: Area, kind: DriveEvent['kind'], text: string, key?: string) {
+  private log(area: Area, kind: DriveEvent['kind'], text: string, key?: string, coach?: string) {
     if (key) {
       if (this.said.has('ev:' + key)) return
       this.said.add('ev:' + key)
     }
-    this.events.push({ t: Math.round(this.t * 10) / 10, area, kind, text, x: this.player.x, z: this.player.z })
+    const c = kind !== 'good' ? COACH[coach ?? key ?? ''] : undefined
+    this.events.push({ t: Math.round(this.t * 10) / 10, area, kind, text, x: this.player.x, z: this.player.z, why: c?.why, practice: c?.practice })
   }
 
   step() {
@@ -237,6 +321,24 @@ export class PracticeSession {
       if (p.x < -30) this.seg = 'stopzone'
     }
 
+    /* --- head-check log (sequence) --- */
+    if (this.look !== this.lastLook && this.look !== 0) {
+      this.observations.push({ t: Math.round(this.t * 10) / 10, side: this.look > 0 ? 'right' : 'left', before: Math.round((this.seg === 'approach' ? p.z - R : -1) * 10) / 10 })
+    }
+    this.lastLook = this.look
+
+    /* --- indicator self-cancels after the turn, like a real car --- */
+    if (this.indicator) {
+      if (this.indicatorHeading === null) this.indicatorHeading = p.h
+      let dh = p.h - this.indicatorHeading
+      while (dh > Math.PI) dh -= Math.PI * 2
+      while (dh < -Math.PI) dh += Math.PI * 2
+      if (Math.abs(dh) > 1.1 && Math.abs(this.controls.steer) < 0.2) {
+        this.indicator = null
+        this.indicatorHeading = null
+      }
+    } else this.indicatorHeading = null
+
     /* --- observation --- */
     if (this.seg === 'approach' && p.z < 30) {
       if (this.look === 1 && !this.flags.lookedRight) {
@@ -256,7 +358,7 @@ export class PracticeSession {
     }
     if (this.seg === 'junction' && !this.flags.indicated && p.h > Math.PI + 0.35) {
       this.flags.indicated = true // only report once
-      this.log('trafficRules', 'minor', 'Du svingte uten å gi tegn i god tid.')
+      this.log('trafficRules', 'minor', 'Du svingte uten å gi tegn i god tid.', undefined, 'signal')
     }
 
     /* --- speed --- */
@@ -267,12 +369,12 @@ export class PracticeSession {
     if (this.seg === 'approach' && p.z < R + 9 && p.z > R) this.flags.maxApproachV = Math.max(this.flags.maxApproachV, kmh)
     if (this.seg === 'approach' && p.z <= R + 0.7 && !this.said.has('ev:approach')) {
       const v = Math.round(this.flags.maxApproachV)
-      if (v > 22) this.log('speedAdaptation', 'major', `Du kom inn mot krysset i ${v} km/t. Hekken skjuler trafikk fra høyre – farten må ned til du har oversikt.`, 'approach')
+      if (v > 22) this.log('speedAdaptation', 'major', `Du kom inn mot krysset i ${v} km/t – for fort.`, 'approach')
       else this.log('speedAdaptation', 'good', `Du senket farten til ${v} km/t inn mot det uoversiktlige krysset.`, 'approach')
     }
     if (p.a < -6.2) {
       this.flags.harshT += DT
-      if (this.flags.harshT > 0.4) this.log('speedAdaptation', 'minor', 'Brå oppbremsing – planlegg tidligere.', 'harsh')
+      if (this.flags.harshT > 0.4) this.log('speedAdaptation', 'minor', 'Du bremset brått.', 'harsh')
     }
 
     /* --- positioning --- */
@@ -312,7 +414,7 @@ export class PracticeSession {
       else this.flags.stopT = 0
       if (this.flags.stopT > 0.8) {
         if (p.z < -0.4 && p.z > -2.6) this.log('positioning', 'good', 'Du stanset godt plassert inntil høyre kant.')
-        else this.log('positioning', 'minor', 'Stans nærmere høyre kant når du parkerer langs vegen.')
+        else this.log('positioning', 'minor', 'Du stanset for langt ut i vegen.', undefined, 'stopPos')
         return this.finish('stopped')
       }
       if (p.x < -70) {
@@ -334,14 +436,14 @@ export class PracticeSession {
       c.v = Math.max(0, c.v - 7 * DT)
       if (!this.flags.carBraked && c.v < 5.5) {
         this.flags.carBraked = true
-        this.log('trafficRules', 'major', 'Bilen fra høyre måtte bremse for deg. Når du svinger til venstre, har du vikeplikt for kjøretøy som kommer fra høyre.')
+        this.log('trafficRules', 'major', 'Bilen fra høyre måtte bremse for deg.', undefined, 'yield')
       }
     } else c.v = Math.min(c.vTarget, c.v + 2.5 * DT)
     c.x -= c.v * DT
     if (c.x < -150) c.active = false
     if (this.seg !== 'approach' && !this.flags.carBraked && c.x < -R && !this.said.has('ev:yield-ok') && p.x > c.x + 3) this.log('trafficRules', 'good', 'Du viket for bilen fra høyre før du svingte.', 'yield-ok')
     if (gapBetween(p, CAR_LEN, CAR_WID, c, CAR_LEN, CAR_WID) < 0.02) {
-      this.log('trafficRules', 'critical', 'Kollisjon med bilen fra høyre.')
+      this.log('trafficRules', 'critical', 'Du kolliderte med bilen fra høyre.', undefined, 'collision')
       this.finish('collision')
     }
   }
@@ -360,10 +462,10 @@ export class PracticeSession {
     // conflict: the player passes the walker's line while the walker is in the road
     if (inRoad && Math.abs(p.x - w.x) < 1.6 && p.v > 0.8 && !this.flags.walkerConflict) {
       this.flags.walkerConflict = true
-      this.log('trafficRules', 'major', 'Fotgjengeren var i vegen du svingte inn i. Den som svinger, har vikeplikt for gående som skal rett fram.')
+      this.log('trafficRules', 'major', 'Du kjørte forbi fotgjengeren som var i vegen du svingte inn i.', undefined, 'walker')
     }
     if (d < 1.1) {
-      this.log('trafficRules', 'critical', 'Du var i ferd med å kjøre på fotgjengeren.')
+      this.log('trafficRules', 'critical', 'Du var i ferd med å kjøre på fotgjengeren.', undefined, 'collision')
       this.finish('collision')
     }
     if (!inRoad && w.z < -R - 0.5 && !this.flags.walkerConflict && this.seg !== 'approach' && !this.said.has('ev:walker-ok') && p.x < -R) this.log('trafficRules', 'good', 'Du lot fotgjengeren gå over før du kjørte videre.', 'walker-ok')
@@ -371,7 +473,7 @@ export class PracticeSession {
 
   private finish(reason: Assessment['reason']) {
     this.seg = 'done'
-    this.finished = assess(this.events, this.flags, reason, this.t, this.mode)
+    this.finished = { ...assess(this.events, this.flags, reason, this.t, this.mode), observations: [...this.observations] }
     this.instruction = null
   }
 }
@@ -394,16 +496,16 @@ export function assess(drive: DriveEvent[], flags: DriveFlags, reason: Assessmen
   // observation is earned, not assumed: no head check before an unmarked junction = clear fault
   if (!flags.lookedRight) {
     areas.observation -= 0.5
-    events.push({ t: Math.round(duration * 10) / 10, area: 'observation', kind: 'major', text: 'Du så ikke til høyre før det uoversiktlige krysset (trykk «Se høyre» / E).', x: 0, z: 0 })
+    events.push({ t: Math.round(duration * 10) / 10, area: 'observation', kind: 'major', text: 'Du så ikke til høyre før det uoversiktlige krysset.', x: 0, z: 0, ...COACH.lookRight })
   }
   if (!flags.lookedLeft) {
     areas.observation -= 0.2
-    events.push({ t: Math.round(duration * 10) / 10, area: 'observation', kind: 'minor', text: 'Se også til venstre før du svinger inn i en ny veg.', x: 0, z: 0 })
+    events.push({ t: Math.round(duration * 10) / 10, area: 'observation', kind: 'minor', text: 'Du så ikke til venstre før du svingte.', x: 0, z: 0, ...COACH.lookLeft })
   }
   const lane = flags.laneN ? flags.laneErr / flags.laneN : 0
   if (lane > 0.6) {
     areas.positioning -= 0.2
-    events.push({ t: Math.round(duration * 10) / 10, area: 'positioning', kind: 'minor', text: `Ujevn plassering i kjørefeltet (snitt ${lane.toFixed(1)} m fra midten av feltet).`, x: 0, z: 0 })
+    events.push({ t: Math.round(duration * 10) / 10, area: 'positioning', kind: 'minor', text: `Ujevn plassering i kjørefeltet (i snitt ${lane.toFixed(1)} m fra midten av feltet).`, x: 0, z: 0, ...COACH.lane })
   }
   if (reason !== 'stopped') for (const k of Object.keys(areas) as Area[]) areas[k] = Math.min(areas[k], reason === 'collision' ? 0.2 : 0.6)
   for (const k of Object.keys(areas) as Area[]) areas[k] = Math.round(Math.max(0, Math.min(1, areas[k])) * 100) / 100

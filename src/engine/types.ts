@@ -225,6 +225,8 @@ export interface OutcomeContent {
   saw?: string
   /** "MEN DU OVERSÅ …" part of mistake feedback. */
   missed?: string
+  /** Optional two-line teaching caption shown during the replay (overrides saw/missed), e.g. ["Ballen var varselet.", "Barnet kom etter."] */
+  replay?: [string, string]
 }
 
 export interface StepContent {

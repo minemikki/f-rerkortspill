@@ -59,3 +59,25 @@ describe('practice drive + KJØREVURDERING', () => {
     expect(seen.filter((x) => x.startsWith('coach'))).toEqual([])
   })
 })
+
+describe('observation + controls groundwork', () => {
+  it('logs head checks with distance to the junction, in order', () => {
+    const s = new PracticeSession('practice')
+    const a = runDrive(s, 'careful')!
+    expect(a.observations?.map((o) => o.side)).toEqual(['right', 'left'])
+    expect(a.observations![0].before).toBeGreaterThan(a.observations![1].before)
+    expect(a.observations![0].before).toBeGreaterThan(10)
+  })
+  it('every fault carries why + what to practise', () => {
+    const a = runDrive(new PracticeSession('practice'), 'careless')!
+    for (const e of a.events.filter((x) => x.kind !== 'good')) {
+      expect(e.why, e.text).toBeTruthy()
+      expect(e.practice, e.text).toBeTruthy()
+    }
+  })
+  it('the indicator cancels itself after the turn', () => {
+    const s = new PracticeSession('practice')
+    runDrive(s, 'careful')
+    expect(s.indicator).toBe(null)
+  })
+})

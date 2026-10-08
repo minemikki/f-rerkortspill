@@ -493,24 +493,43 @@ export function FeedbackToast({ ui, content, onDismiss }: { ui: RunnerUI; conten
   )
 }
 
-export function ReplayBadge({ show }: { show: boolean }) {
+/**
+ * Replay captions, synced to the replay's two camera languages:
+ * driver view → "DU SÅ …", overhead reveal → "MEN DU OVERSÅ …", freeze-frame → both held.
+ */
+export function ReplayCaption({ runner, ui, def, content }: { runner: ScenarioRunner; ui: RunnerUI; def: ScenarioDef; content: ScenarioContent }) {
+  const [info, setInfo] = useState<{ p: number; pov: boolean; frozen: boolean } | null>(null)
+  useRaf(() => {
+    const r = runner.replayInfo
+    setInfo((prev) => (r === null ? null : prev && Math.abs(prev.p - r.p) < 0.02 && prev.pov === r.pov && prev.frozen === r.frozen ? prev : { ...r }))
+  })
+  const fb = ui.feedback
+  if (!info || !fb) return null
+  const oc = content.steps[fb.stepId]?.outcomes[fb.outcomeId]
+  const saw = fb.sawActor ? actorLabel(def, content, fb.sawActor) : oc?.saw
+  const lines: [string | null, string | null] = oc?.replay
+    ? [oc.replay[0], oc.replay[1]]
+    : [saw ? `Du så ${saw}.` : null, oc?.missed ? `${saw ? 'Men du' : 'Du'} overså ${oc.missed}.` : oc?.title ?? null]
+  const showSecond = !info.pov || info.frozen || info.p > 0.6
   return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          className="pointer-events-none absolute inset-x-0 top-[calc(9vh+14px)] z-30 flex justify-center"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-        >
-          <div className="flex items-center gap-3 rounded-full bg-ink/70 px-4 py-2 ring-1 ring-white/10 backdrop-blur-md">
-            <span className="rec h-2.5 w-2.5 rounded-full bg-stop" />
-            <span className="eyebrow text-snow">Replay</span>
-            <span className="num text-[12px] font-bold text-fog">0.6×</span>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div className="pointer-events-none absolute inset-x-0 bottom-[calc(11vh+18px)] z-30 flex flex-col items-center gap-1 px-5 text-center" aria-live="polite">
+      <div className="mb-2 flex items-center gap-2 rounded-full bg-ink/70 px-3 py-1.5 ring-1 ring-white/10 backdrop-blur-md">
+        <span className={`h-2 w-2 rounded-full ${info.frozen ? 'bg-ice' : 'rec bg-stop'}`} />
+        <span className="eyebrow text-[10px] text-snow">{info.frozen ? 'Fryst' : info.pov ? 'Replay · din utsikt' : 'Replay · ovenfra'}</span>
+      </div>
+      <AnimatePresence>
+        {lines[0] && (
+          <motion.div key="l1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="display-tight text-[clamp(22px,5.4vw,40px)] text-snow [text-shadow:0_2px_18px_rgba(0,0,0,0.7)]">
+            {lines[0]}
+          </motion.div>
+        )}
+        {showSecond && lines[1] && (
+          <motion.div key="l2" initial={{ opacity: 0, y: 10, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.35 }} className="display-tight text-[clamp(24px,6vw,46px)] text-signal [text-shadow:0_2px_18px_rgba(0,0,0,0.7)]">
+            {lines[1]}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -567,6 +586,18 @@ export function MistakeCard({
           <h2 className="display-tight text-[clamp(30px,8.4vw,44px)]">{oc?.title}</h2>
         )}
         <p className="mt-3 text-[16px] leading-snug text-mist">{oc?.body}</p>
+        {RULE_CARDS[content.id] && (
+          <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/[0.05] p-2.5 ring-1 ring-white/10">
+            <span className="h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+              <DiagramSvg id={RULE_CARDS[content.id].diagram} />
+            </span>
+            <span className="min-w-0">
+              <span className="eyebrow block text-[9.5px] text-signal">Regelen</span>
+              <span className="block text-[14px] font-extrabold leading-tight">{RULE_CARDS[content.id].title}</span>
+              <span className="block text-[11.5px] text-fog">{RULE_CARDS[content.id].source.section ? `Trafikkreglene ${RULE_CARDS[content.id].source.section}` : RULE_CARDS[content.id].source.title}</span>
+            </span>
+          </div>
+        )}
         <div className="mt-6 flex gap-3">
           {fb.canRetry && (
             <button className="btn btn-primary h-[60px] flex-1 text-[16px]" onClick={onRetry}>
