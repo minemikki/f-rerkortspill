@@ -149,6 +149,11 @@ function PlaySession({ scenarioId, onRestart }: { scenarioId: string; onRestart:
     [animateShake, shakeScope],
   )
 
+  /* ───── replay transition cue ───── */
+  useEffect(() => {
+    if (ui.phase === 'replay') sfx.play('rewind')
+  }, [ui.phase])
+
   /* ───── completion ───── */
   const committed = useRef(false)
   useEffect(() => {

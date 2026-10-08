@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { haptic, sfx } from '../../audio/sfx'
+import { voice } from '../../audio/voice'
 import type { ActorView } from '../../engine/sim'
 import { drive as autopilot } from '../../practice/autopilot'
 import { AREA_LABELS, PracticeSession, VERDICT_LABELS, verdictOf, type Area, type Assessment } from '../../practice/session'
@@ -71,8 +72,31 @@ function PracticeRun({ mode, onAgain }: { mode: Mode; onAgain: () => void }) {
     if (session.instruction) {
       sfx.play('stepStart', { volume: 0.5 })
       haptic(12)
+      voice.say(session.instruction.id, session.instruction.text)
     }
   }, [session.instruction?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // engine, tyres, ambience and indicator relay while driving
+  useEffect(() => {
+    if (!started || result) return
+    sfx.startEngine()
+    sfx.startAmbience()
+    let tick = false
+    const t = setInterval(() => {
+      sfx.setEngine(session.player.v, session.player.a, 1)
+      const on = session.indicator !== null && Math.floor(performance.now() / 385) % 2 === 0
+      if (on !== tick) {
+        tick = on
+        if (session.indicator) sfx.play('tick', { volume: on ? 1 : 0.6 })
+      }
+    }, 50)
+    return () => {
+      clearInterval(t)
+      sfx.stopEngine()
+      sfx.stopAmbience()
+    }
+  }, [started, result, session])
+  const [voiceOn, setVoiceOn] = useState(() => voice.enabled)
 
   const controls = useControls(session, started && !result)
   const kmh = Math.round(session.player.v * 3.6)
@@ -91,6 +115,18 @@ function PracticeRun({ mode, onAgain }: { mode: Mode; onAgain: () => void }) {
             <div className="eyebrow text-[10px] text-signal">{mode === 'exam' ? 'Prøvekjøring · simulert' : 'Øvelseskjøring'}</div>
             <div className="truncate text-[12px] font-semibold text-mist">Treningsvurdering – ikke en offisiell kjøreprøve</div>
           </div>
+          <button
+            aria-pressed={voiceOn}
+            aria-label="Opplesning av instruktøren"
+            title={voice.available ? 'Opplesning av instruktøren' : 'Ingen norsk stemme på denne enheten – teksten vises alltid'}
+            onClick={() => {
+              voice.enabled = !voiceOn
+              setVoiceOn(!voiceOn)
+            }}
+            className={`h-10 shrink-0 rounded-full px-3 text-[11px] font-black uppercase tracking-[0.08em] ring-1 backdrop-blur-md ${voiceOn ? 'bg-signal text-ink ring-signal' : 'bg-ink/55 text-fog ring-white/12'}`}
+          >
+            {voiceOn ? 'Stemme på' : 'Stemme av'}
+          </button>
         </div>
         <AnimatePresence mode="wait">
           {session.instruction && started && (

@@ -1,6 +1,7 @@
 import { obbGap, type ActorRuntime } from '../engine/sim'
 import { CONTROL_MODES, type ControlMode } from '../learning/types'
 import { KRYSS } from '../scenarios/layouts'
+import { VOICE_LINES } from '../audio/voice'
 
 /**
  * PRACTICE DRIVING — vertical slice (S1 residential junction).
@@ -247,7 +248,7 @@ export class PracticeSession {
 
   constructor(mode: ControlMode = 'practice') {
     this.mode = mode
-    this.say('start', 'Kjør rett fram. Fartsgrensen er 30.')
+    this.say('start')
   }
 
   get policy() {
@@ -268,8 +269,10 @@ export class PracticeSession {
     }
   }
 
-  private say(id: string, text: string, coach = false) {
+  /** instructor line by id — the text lives in audio/voice.ts (single source for subtitles + voice) */
+  private say(id: string, coach = false) {
     if (this.said.has(id)) return
+    const text = VOICE_LINES.find((l) => l.id === id)?.text ?? id
     if (coach && this.policy.instructor !== 'coach' && this.policy.instructor !== 'route-only') return
     if (coach && this.mode === 'exam') return
     this.said.add(id)
@@ -293,7 +296,7 @@ export class PracticeSession {
 
     /* --- route / instructor --- */
     if (this.seg === 'approach') {
-      if (p.z < 34) this.say('turn', 'I krysset tar du til venstre.')
+      if (p.z < 34) this.say('turn')
       if (p.z < 22 && !this.car.active) {
         // Choreography: the hidden car reaches the junction just after you would at
         // your current speed — fast or slow, you meet it (that is the lesson).
@@ -304,12 +307,12 @@ export class PracticeSession {
         this.walker.active = true
         this.walker.v = 1.3
       }
-      if (p.z < 18 && !this.flags.lookedRight) this.say('coach-look', 'Uoversiktlig kryss – se til høyre.', true)
+      if (p.z < 18 && !this.flags.lookedRight) this.say('coach-look', true)
       if (p.z < R + 0.6) this.seg = 'junction'
     } else if (this.seg === 'junction') {
       if (p.x < -R - 1) {
         this.seg = 'exit'
-        this.say('stop', 'Kjør inn til høyre og stans ved postkassestativet.')
+        this.say('stop')
       } else if (p.z < -R - 2) {
         this.log('trafficRules', 'minor', 'Du kjørte rett fram – instruktøren ba deg ta til venstre.')
         return this.finish('wrong-way')

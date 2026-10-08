@@ -1,7 +1,11 @@
 /**
- * Procedural WebAudio sound design — no audio files needed.
- * All sounds are synthesised so the prototype ships without assets;
- * the API (play('horn') etc.) stays the same when real samples arrive.
+ * Procedural WebAudio sound design — no audio files needed (placeholder
+ * quality, deliberately subtle: no arcade-racing sounds). The API
+ * (play('horn'), setEngine(...)) stays the same when recorded samples
+ * arrive — see docs/LEARNING_SYSTEMS.md › Audio for the recording list.
+ *
+ * Layers: engine (harmonic, load-dependent), tyre/road noise, brake scrub,
+ * street ambience (distant traffic, wind in leaves, birds), cues.
  */
 
 type Id =
@@ -25,11 +29,22 @@ type Id =
   | 'levelUp'
   | 'stepStart'
   | 'countdown'
+  | 'rewind'
 
 class Sfx {
   ctx: AudioContext | null = null
   master: GainNode | null = null
-  private engine: { osc1: OscillatorNode; osc2: OscillatorNode; gain: GainNode; filter: BiquadFilterNode; noiseGain: GainNode } | null = null
+  private engine: {
+    partials: OscillatorNode[]
+    gain: GainNode
+    filter: BiquadFilterNode
+    tyre: GainNode
+    tyreF: BiquadFilterNode
+    scrub: GainNode
+    lfo: OscillatorNode
+    srcs: AudioScheduledSourceNode[]
+  } | null = null
+  private ambienceNodes: AudioScheduledSourceNode[] = []
   private ambience: GainNode | null = null
   private noiseBuf: AudioBuffer | null = null
   private birdTimer: number | null = null
@@ -193,8 +208,33 @@ class Sfx {
         ;[392, 523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => this.tone(f, 'triangle', t + i * 0.08, 0.35, 0.15 * v))
         break
       case 'tick': {
-        this.tone(2400, 'square', t, 0.012, 0.035 * v)
-        this.tone(1200, 'square', t + 0.004, 0.01, 0.02 * v)
+        // indicator relay: a short filtered click with a woody body
+        const n = this.noise(0.03)
+        const f = ctx.createBiquadFilter()
+        f.type = 'bandpass'
+        f.frequency.value = 3200
+        f.Q.value = 3
+        const g = ctx.createGain()
+        this.env(g, t, 0.001, 0.09 * v, 0.018)
+        n.connect(f)
+        f.connect(g)
+        g.connect(this.master)
+        this.tone(900, 'triangle', t, 0.02, 0.025 * v)
+        break
+      }
+      case 'rewind': {
+        // replay transition: tape-like descending sweep
+        const n = this.noise(0.7)
+        const f = ctx.createBiquadFilter()
+        f.type = 'bandpass'
+        f.Q.value = 6
+        f.frequency.setValueAtTime(3600, t)
+        f.frequency.exponentialRampToValueAtTime(300, t + 0.6)
+        const g = ctx.createGain()
+        this.env(g, t, 0.05, 0.12 * v, 0.6)
+        n.connect(f)
+        f.connect(g)
+        g.connect(this.master)
         break
       }
       case 'horn': {
@@ -279,41 +319,68 @@ class Sfx {
   startEngine() {
     if (!this.ctx || !this.master || this.engine) return
     const ctx = this.ctx
-    const osc1 = ctx.createOscillator()
-    const osc2 = ctx.createOscillator()
-    osc1.type = 'sawtooth'
-    osc2.type = 'square'
-    osc1.frequency.value = 38
-    osc2.frequency.value = 76
+    // a 4-cylinder idle is mostly low harmonics: sum soft partials, then a moving low-pass
     const filter = ctx.createBiquadFilter()
     filter.type = 'lowpass'
-    filter.frequency.value = 260
-    filter.Q.value = 2
+    filter.frequency.value = 220
+    filter.Q.value = 0.7
     const gain = ctx.createGain()
     gain.gain.value = 0
-    const g2 = ctx.createGain()
-    g2.gain.value = 0.35
-    osc1.connect(filter)
-    osc2.connect(g2)
-    g2.connect(filter)
-    // tyre/road noise
+    const partials: OscillatorNode[] = []
+    ;[1, 2, 3, 4.02].forEach((h, i) => {
+      const o = ctx.createOscillator()
+      o.type = i === 0 ? 'triangle' : 'sine'
+      o.frequency.value = 30 * h
+      const pg = ctx.createGain()
+      pg.gain.value = [0.55, 0.32, 0.16, 0.07][i]
+      o.connect(pg)
+      pg.connect(filter)
+      o.start()
+      partials.push(o)
+    })
+    // cylinder-pulse amplitude modulation (subtle "chug")
+    const lfo = ctx.createOscillator()
+    lfo.frequency.value = 15
+    const lfoG = ctx.createGain()
+    lfoG.gain.value = 0.15
+    lfo.connect(lfoG)
+    const am = ctx.createGain()
+    am.gain.value = 0.85
+    lfoG.connect(am.gain)
+    filter.connect(am)
+    am.connect(gain)
+    gain.connect(this.master)
+    lfo.start()
+    // tyre / road noise: band-passed noise that rises in level and pitch with speed
     const n = ctx.createBufferSource()
     n.buffer = this.noiseBuf
     n.loop = true
-    const nf = ctx.createBiquadFilter()
-    nf.type = 'lowpass'
-    nf.frequency.value = 500
-    const noiseGain = ctx.createGain()
-    noiseGain.gain.value = 0
-    n.connect(nf)
-    nf.connect(noiseGain)
-    noiseGain.connect(this.master)
-    filter.connect(gain)
-    gain.connect(this.master)
-    osc1.start()
-    osc2.start()
+    const tyreF = ctx.createBiquadFilter()
+    tyreF.type = 'bandpass'
+    tyreF.frequency.value = 350
+    tyreF.Q.value = 0.6
+    const tyre = ctx.createGain()
+    tyre.gain.value = 0
+    n.connect(tyreF)
+    tyreF.connect(tyre)
+    tyre.connect(this.master)
+    // brake scrub under hard deceleration
+    const n2 = ctx.createBufferSource()
+    n2.buffer = this.noiseBuf
+    n2.loop = true
+    n2.playbackRate.value = 1.7
+    const sf = ctx.createBiquadFilter()
+    sf.type = 'bandpass'
+    sf.frequency.value = 1600
+    sf.Q.value = 2.5
+    const scrub = ctx.createGain()
+    scrub.gain.value = 0
+    n2.connect(sf)
+    sf.connect(scrub)
+    scrub.connect(this.master)
     n.start()
-    this.engine = { osc1, osc2, gain, filter, noiseGain }
+    n2.start()
+    this.engine = { partials, gain, filter, tyre, tyreF, scrub, lfo, srcs: [n, n2, lfo, ...partials] }
   }
 
   /** speed m/s, accel m/s², scale 0..1 (time scale, so slow-mo lowers pitch) */
@@ -321,13 +388,23 @@ class Sfx {
     const e = this.engine
     if (!e || !this.ctx) return
     const t = this.ctx.currentTime
-    const rpm = 0.25 + Math.min(1, speed / 14) * 0.55 + Math.max(0, accel) * 0.04
-    const f = (34 + rpm * 70) * (0.55 + 0.45 * scale)
-    e.osc1.frequency.setTargetAtTime(f, t, 0.08)
-    e.osc2.frequency.setTargetAtTime(f * 2.01, t, 0.08)
-    e.filter.frequency.setTargetAtTime(180 + rpm * 520, t, 0.1)
-    e.gain.gain.setTargetAtTime(0.05 + rpm * 0.06, t, 0.1)
-    e.noiseGain.gain.setTargetAtTime(Math.min(0.08, speed * 0.006) * scale, t, 0.15)
+    // simple 3-gear model so revs rise and fall instead of a siren
+    const gearTop = [4, 8.5, 13, 40]
+    let gear = 0
+    while (speed > gearTop[gear] && gear < gearTop.length - 1) gear++
+    const lo = gear === 0 ? 0 : gearTop[gear - 1]
+    const inGear = Math.min(1, (speed - lo) / (gearTop[gear] - lo))
+    const load = Math.max(0, accel) / 3 // 0..1 when accelerating
+    const rpm = 0.18 + inGear * 0.5 + load * 0.12
+    const f = (26 + rpm * 46) * (0.6 + 0.4 * scale)
+    e.partials.forEach((o, i) => o.frequency.setTargetAtTime(f * [1, 2, 3, 4.02][i], t, 0.12))
+    e.lfo.frequency.setTargetAtTime(f / 2, t, 0.12)
+    e.filter.frequency.setTargetAtTime(160 + rpm * 380 + load * 260, t, 0.15)
+    // engine braking (decelerating) is quieter than pulling
+    e.gain.gain.setTargetAtTime((0.045 + rpm * 0.04 + load * 0.03) * (accel < -0.3 ? 0.65 : 1), t, 0.15)
+    e.tyre.gain.setTargetAtTime(Math.min(0.07, speed * 0.0055) * scale, t, 0.2)
+    e.tyreF.frequency.setTargetAtTime(280 + speed * 45, t, 0.2)
+    e.scrub.gain.setTargetAtTime(speed > 1.5 && accel < -4.5 ? Math.min(0.05, (-accel - 4.5) * 0.02) : 0, t, 0.08)
   }
 
   stopEngine() {
@@ -335,15 +412,16 @@ class Sfx {
     if (!e || !this.ctx) return
     const t = this.ctx.currentTime
     e.gain.gain.setTargetAtTime(0, t, 0.15)
-    e.noiseGain.gain.setTargetAtTime(0, t, 0.15)
+    e.tyre.gain.setTargetAtTime(0, t, 0.15)
+    e.scrub.gain.setTargetAtTime(0, t, 0.05)
     const eng = e
     setTimeout(() => {
-      try {
-        eng.osc1.stop()
-        eng.osc2.stop()
-      } catch {
-        /* ignore */
-      }
+      for (const s of eng.srcs)
+        try {
+          s.stop()
+        } catch {
+          /* ignore */
+        }
     }, 800)
     this.engine = null
   }
@@ -351,21 +429,41 @@ class Sfx {
   startAmbience() {
     if (!this.ctx || !this.master || this.ambience) return
     const ctx = this.ctx
-    const n = ctx.createBufferSource()
-    n.buffer = this.noiseBuf
-    n.loop = true
-    const f = ctx.createBiquadFilter()
-    f.type = 'bandpass'
-    f.frequency.value = 420
-    f.Q.value = 0.4
-    const g = ctx.createGain()
-    g.gain.value = 0
-    g.gain.setTargetAtTime(0.035, ctx.currentTime, 1)
-    n.connect(f)
-    f.connect(g)
-    g.connect(this.master)
-    n.start()
-    this.ambience = g
+    const bus = ctx.createGain()
+    bus.gain.value = 0
+    bus.gain.setTargetAtTime(1, ctx.currentTime, 1.2)
+    bus.connect(this.master)
+    this.ambience = bus
+    const layer = (type: BiquadFilterType, freq: number, q: number, level: number, rate = 1, swell?: { hz: number; depth: number }) => {
+      const n = ctx.createBufferSource()
+      n.buffer = this.noiseBuf
+      n.loop = true
+      n.playbackRate.value = rate
+      const f = ctx.createBiquadFilter()
+      f.type = type
+      f.frequency.value = freq
+      f.Q.value = q
+      const g = ctx.createGain()
+      g.gain.value = level
+      n.connect(f)
+      f.connect(g)
+      g.connect(bus)
+      n.start()
+      this.ambienceNodes.push(n)
+      if (swell) {
+        const l = ctx.createOscillator()
+        l.frequency.value = swell.hz
+        const lg = ctx.createGain()
+        lg.gain.value = level * swell.depth
+        l.connect(lg)
+        lg.connect(g.gain)
+        l.start()
+        this.ambienceNodes.push(l)
+      }
+    }
+    layer('lowpass', 160, 0.5, 0.05, 0.6, { hz: 0.07, depth: 0.6 }) // distant traffic rumble
+    layer('bandpass', 420, 0.4, 0.022) // general outdoor air
+    layer('highpass', 2600, 0.3, 0.008, 1.3, { hz: 0.13, depth: 0.9 }) // wind in leaves
     const bird = () => {
       if (!this.ctx || !this.ambience) return
       const t = this.ctx.currentTime
@@ -378,14 +476,14 @@ class Sfx {
         o.frequency.setValueAtTime(base, st)
         o.frequency.exponentialRampToValueAtTime(base * (1.25 + Math.random() * 0.3), st + 0.06)
         gg.gain.setValueAtTime(0.0001, st)
-        gg.gain.exponentialRampToValueAtTime(0.018, st + 0.01)
+        gg.gain.exponentialRampToValueAtTime(0.014, st + 0.01)
         gg.gain.exponentialRampToValueAtTime(0.0001, st + 0.08)
         o.connect(gg)
-        gg.connect(this.master!)
+        gg.connect(this.ambience)
         o.start(st)
         o.stop(st + 0.1)
       }
-      this.birdTimer = window.setTimeout(bird, 2500 + Math.random() * 5000)
+      this.birdTimer = window.setTimeout(bird, 3000 + Math.random() * 6000)
     }
     this.birdTimer = window.setTimeout(bird, 1500)
   }
@@ -394,6 +492,16 @@ class Sfx {
     if (this.ambience && this.ctx) this.ambience.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3)
     this.ambience = null
     if (this.birdTimer) clearTimeout(this.birdTimer)
+    const nodes = this.ambienceNodes
+    this.ambienceNodes = []
+    setTimeout(() => {
+      for (const n of nodes)
+        try {
+          n.stop()
+        } catch {
+          /* ignore */
+        }
+    }, 1200)
   }
 }
 

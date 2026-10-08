@@ -81,3 +81,18 @@ describe('observation + controls groundwork', () => {
     expect(s.indicator).toBe(null)
   })
 })
+
+describe('instructor voice lines', () => {
+  it('every instruction the session gives exists in the voice registry (text fallback always present)', async () => {
+    const { VOICE_LINES } = await import('../audio/voice')
+    const s = new PracticeSession('practice')
+    const seen = new Set<string>()
+    for (let i = 0; i < 120 / DT && !s.finished; i++) {
+      s.setControls({ throttle: 0.35, brake: 0, steer: 0 })
+      s.step()
+      if (s.instruction) seen.add(s.instruction.id)
+    }
+    for (const id of seen) expect(VOICE_LINES.some((l) => l.id === id && l.text.length > 3), id).toBe(true)
+    expect(seen.size).toBeGreaterThanOrEqual(2)
+  })
+})
