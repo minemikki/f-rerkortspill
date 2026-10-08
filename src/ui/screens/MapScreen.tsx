@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { haptic, sfx } from '../../audio/sfx'
 import { BADGES, WORLDS, type WorldDef } from '../../content/world'
 import { levelFor } from '../../engine/scoring'
@@ -30,8 +30,9 @@ export function MapScreen() {
   const lvl = levelFor(xp)
   const totalStars = Object.values(results).reduce((a, r) => a + r.stars, 0)
 
+  const rootRef = useRef<HTMLDivElement>(null)
   return (
-    <div className="relative h-full overflow-hidden bg-ink">
+    <div ref={rootRef} className="relative h-full overflow-hidden bg-ink">
       <TopoBackground />
       {/* top HUD */}
       <header className="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-ink via-ink/90 to-transparent px-4 pb-6 pt-[calc(var(--safe-top)+12px)]">
@@ -64,7 +65,10 @@ export function MapScreen() {
         </div>
       </header>
 
-      <div className="relative z-10 h-full overflow-y-auto no-scrollbar">
+      <div
+        className="relative z-10 h-full overflow-y-auto no-scrollbar"
+        onScroll={(e) => rootRef.current?.style.setProperty('--sy', String(e.currentTarget.scrollTop))}
+      >
         <div className="mx-auto max-w-xl px-4 pb-[calc(var(--safe-bottom)+60px)] pt-[calc(var(--safe-top)+96px)]">
           <div className="mb-10">
             <DailyPlanCard />
@@ -119,12 +123,14 @@ function OpenWorld({ w, onPick }: { w: WorldDef; onPick: (id: string) => void })
     }
     return d
   }, [pts])
+  const pathRef = useRef<SVGPathElement>(null)
+  const currentIdx = current ? nodes.findIndex((n) => n.id === current) : nodes.length - 1
   const progressFrac = Math.max(0, Math.min(1, (nodes.findIndex((n) => n.id === current) === -1 ? nodes.length : nodes.findIndex((n) => n.id === current)) / Math.max(1, nodes.length - 1)))
 
   return (
     <section className="relative">
       <CitySkyline />
-      <div className="relative -mt-6">
+      <div className="relative z-[1] -mt-6">
         <div className="eyebrow flex items-center gap-2 text-signal">
           <span className="stripe inline-block h-[3px] w-8" /> Verden {w.index}
         </div>
@@ -141,7 +147,7 @@ function OpenWorld({ w, onPick }: { w: WorldDef; onPick: (id: string) => void })
         <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 400 ${H}`} preserveAspectRatio="none" aria-hidden>
           <path d={pathD} stroke="#232b35" strokeWidth={44} fill="none" strokeLinecap="round" />
           <path d={pathD} stroke="#2c3540" strokeWidth={38} fill="none" strokeLinecap="round" />
-          <path d={pathD} stroke="#ffd400" strokeOpacity={0.8} strokeWidth={3} fill="none" strokeDasharray="14 16" />
+          <path ref={pathRef} d={pathD} stroke="#ffd400" strokeOpacity={0.8} strokeWidth={3} fill="none" strokeDasharray="14 16" />
           <motion.path
             d={pathD}
             stroke="#2ee6a6"
@@ -154,6 +160,7 @@ function OpenWorld({ w, onPick }: { w: WorldDef; onPick: (id: string) => void })
             transition={{ duration: 1.4, ease }}
           />
         </svg>
+        <JourneyCar pathRef={pathRef} targetY={pts[Math.max(0, currentIdx)].y} />
         {nodes.map((n, i) => (
           <MapNode
             key={n.id}
@@ -178,6 +185,68 @@ function OpenWorld({ w, onPick }: { w: WorldDef; onPick: (id: string) => void })
         ))}
       </div>
     </section>
+  )
+}
+
+/**
+ * The player's car, driving along the journey road to the next level on
+ * entry (≈1.6 s, once). Plain DOM + one rAF loop — no 3D on the map, so
+ * mobile stays cheap. Reduced motion: placed directly.
+ */
+function JourneyCar({ pathRef, targetY }: { pathRef: React.RefObject<SVGPathElement | null>; targetY: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const path = pathRef.current
+    const el = ref.current
+    if (!path || !el) return
+    const len = path.getTotalLength()
+    // path runs top→bottom, so y grows with length: binary-search the length at the target node
+    let lo = 0
+    let hi = len
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2
+      if (path.getPointAtLength(mid).y < targetY) lo = mid
+      else hi = mid
+    }
+    const end = Math.max(0, lo - 70) // stop just before the node (the START tag sits below it)
+    const start = Math.max(0, end - 220)
+    const place = (l: number) => {
+      const w = el.parentElement?.clientWidth ?? 400
+      const sx = w / 400
+      const a = path.getPointAtLength(l)
+      const b = path.getPointAtLength(Math.min(len, l + 2))
+      const ang = (Math.atan2(b.y - a.y, (b.x - a.x) * sx) * 180) / Math.PI + 90
+      el.style.left = `${(a.x / 400) * 100}%`
+      el.style.top = `${a.y}px`
+      el.style.transform = `translate(-50%, -50%) rotate(${ang}deg)`
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      place(end)
+      return
+    }
+    let raf = 0
+    const t0 = performance.now() + 350
+    const tick = (now: number) => {
+      const k = Math.min(1, Math.max(0, (now - t0) / 1600))
+      place(start + (end - start) * (1 - Math.pow(1 - k, 3)))
+      if (k < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [pathRef, targetY])
+  return (
+    <div ref={ref} className="pointer-events-none absolute left-1/2 top-0 z-[1]" aria-hidden>
+      <svg width="20" height="34" viewBox="0 0 20 34">
+        <ellipse cx="10" cy="18" rx="10" ry="15" fill="#000" opacity="0.35" />
+        <rect x="2" y="2" width="16" height="30" rx="6" fill="#f2f0ea" />
+        <rect x="4" y="21" width="12" height="6" rx="2" fill="#1b232c" />
+        <rect x="4" y="8" width="12" height="7" rx="2" fill="#1b232c" />
+        <rect x="3" y="2.5" width="4" height="2" rx="1" fill="#ffd400" />
+        <rect x="13" y="2.5" width="4" height="2" rx="1" fill="#ffd400" />
+        <rect x="3" y="30" width="4" height="1.6" rx="0.8" fill="#e03a2f" />
+        <rect x="13" y="30" width="4" height="1.6" rx="0.8" fill="#e03a2f" />
+      </svg>
+    </div>
   )
 }
 
@@ -213,13 +282,13 @@ function MapNode({
           <>
             <span className="pulse-ring absolute inset-0 rounded-full bg-signal/50" />
             <motion.div
-              className="absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-xl bg-snow px-3 py-1.5 text-[12px] font-black uppercase tracking-wider text-ink shadow-xl"
+              className="absolute -bottom-12 left-1/2 z-[2] -translate-x-1/2 whitespace-nowrap rounded-xl bg-snow px-3 py-1.5 text-[12px] font-black uppercase tracking-wider text-ink shadow-xl"
               style={{ fontStretch: '118%' }}
-              animate={{ y: [0, -5, 0] }}
+              animate={{ y: [0, 4, 0] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
             >
               Start
-              <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-snow" />
+              <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-snow" />
             </motion.div>
           </>
         )}
@@ -383,7 +452,7 @@ function WorldArt({ theme }: { theme: WorldDef['theme'] }) {
 
 function CitySkyline() {
   return (
-    <svg className="pointer-events-none -mx-4 block h-[120px] w-[calc(100%+2rem)]" viewBox="0 0 480 120" preserveAspectRatio="xMidYMax slice" aria-hidden>
+    <svg className="parallax-mid pointer-events-none -mx-4 block h-[120px] w-[calc(100%+2rem)]" viewBox="0 0 480 120" preserveAspectRatio="xMidYMax slice" aria-hidden>
       <defs>
         <linearGradient id="sky-city" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#0a0e13" stopOpacity="0" />
@@ -421,7 +490,7 @@ function CitySkyline() {
 
 function TopoBackground() {
   return (
-    <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.07]" aria-hidden>
+    <svg className="parallax-bg pointer-events-none absolute inset-x-0 top-0 h-[160%] w-full opacity-[0.07]" aria-hidden>
       <defs>
         <pattern id="topo" width="220" height="220" patternUnits="userSpaceOnUse">
           {[30, 55, 80, 105].map((r) => (

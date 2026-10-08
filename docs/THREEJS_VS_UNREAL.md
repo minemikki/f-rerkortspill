@@ -62,3 +62,49 @@ Unreal on mobile means native apps (store review, about 200 MB+ downloads) or Pi
 
 Even then, the deterministic engine, content, theory and mastery layers are engine-agnostic and
 would carry over.
+
+---
+
+## Phase 3 decision gate (after the city-kit, character and vehicle pass)
+
+### 1. How close did S1 get to the art-direction reference?
+
+About **two-thirds of the way.** Composition, light, materials and street dressing now read as
+the same *kind* of image as the reference: HDRI daylight, AgX, PBR asphalt and paving, granite
+kerbs, Norwegian timber houses with porches, curtains and house numbers, gardens, hedges, worn
+markings, believable cars. S2–S5 are on the same pipeline, each with its own identity (boliggate,
+bygate with bike lanes, small-town main street with zebra crossing, roundabout with bus lay-by).
+
+### 2. What is the remaining gap?
+
+In order of visibility:
+1. **People and cyclists.** Procedural skinned mannequins with no face, hair or cloth detail.
+2. **Vehicle detail up close.** Panel shaping, headlight internals, interiors.
+3. **Micro-detail and density.** Clutter, decals, foliage variety, close-up tree branches.
+4. **Lighting subtlety.** Soft GI bounce and contact shadows, which the reference fakes or bakes.
+
+### 3. Is the cause assets, art direction, performance budget or Three.js?
+
+* **Assets: about 70 %.** Items 1–3 are authored content: rigged characters, modelled cars,
+  decals, species trees.
+* **Performance budget: about 20 %.** Mid-range phones cap draw calls, shadows and post FX. That is
+  why medium drops AO and bloom and low drops shadows.
+* **Art direction: about 10 %.** It is defined and enforced. The remaining work is small
+  colour/value tuning.
+* **Three.js: about 0 %** for this daytime, small-world genre. Nothing in the gap needs a renderer
+  feature that Three.js lacks. Baked AO / lightmaps for item 4 are standard in Three.js.
+
+### 4. Could another Three.js pass close most of the gap?
+
+**Yes, if it is an asset pass, not another procedural pass.** Procedural geometry is now at
+diminishing returns, especially for humans. Buying or commissioning rigged characters (see
+`ASSET_AUDIT.md`) and 2–3 glTF cars, and dropping them into the existing node contract, closes
+items 1–2. Baked AO for the static batch closes most of item 4. Estimated: one focused asset
+sprint, plus integration that the pipeline (KTX2, tiers, MergeStatic) already supports.
+
+### 5. Is there a concrete reason to migrate now?
+
+**No.** None of the four gap items is engine-bound. Migrating would throw away instant web
+start, mobile reach and the tested deterministic simulation, and still leave the same asset
+bill. The revisit triggers above (night/rain/snow with dynamic lighting as a core feature;
+users accepting an install for console-grade visuals) have not occurred.

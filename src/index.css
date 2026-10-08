@@ -263,3 +263,18 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* map parallax: driven by --sy (scrollTop) set on scroll — no React re-render */
+.parallax-bg {
+  transform: translate3d(0, calc(var(--sy, 0) * -0.18px), 0);
+  will-change: transform;
+}
+.parallax-mid {
+  transform: translate3d(0, calc(var(--sy, 0) * 0.12px), 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .parallax-bg,
+  .parallax-mid {
+    transform: none;
+  }
+}

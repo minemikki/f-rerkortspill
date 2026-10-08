@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { RUND } from '../../scenarios/layouts'
 import { MergeStatic, Sign } from '../kit'
+import { Car } from '../models'
 import { ParkedBike } from '../render/characters'
 import { Bench2, BikeRack, BusShelter2, CityBlock, LitterBin, Planter, dashedMark, discGeo, lineMark, markingMaterial, yieldTeeth, zebraMark, type BlockSpec } from '../render/citykit'
 import { surface } from '../render/materials'
@@ -10,6 +11,8 @@ import { boxUV } from '../render/uv'
 import { ForestHills, groundPlane, Manhole, NorHouse, RoadWear, StreetLight, curbArcGeo, worldBox } from '../render/streetkit'
 import { Trees, scatter, type TreeInstance } from '../render/vegetation'
 import { Statics, envMats, groundStatic, roadStrip, sidewalkRun, type Static, KERB_H } from './shared'
+
+const LOT = { x: 17, z: 30 }
 
 /**
  * S5 «Rushtrafikk» (boss) — single-lane roundabout in a town centre: raised
@@ -124,12 +127,25 @@ export function Roundabout({ quality }: { quality: QualitySettings }) {
     // gang- og sykkelvei west of the south arm
     out.push({ g: groundPlane(-9.6, 72, 2.6, 120, 0.003), m: asphalt, cast: false })
     out.push({ g: dashedMark('z', -9.6, 14, 130, 1, 1, 0.08), m: white, cast: false })
+    // grocery car park east of the south arm (x 10..24, z 25..35): asphalt, kerb, bay lines
+    out.push({ g: groundPlane(LOT.x, LOT.z, 14, 10, 0.004), m: asphalt, cast: false })
+    for (let i = 0; i <= 5; i++) out.push({ g: lineMark('z', LOT.x - 7 + 0.4 + i * 2.64, LOT.z - 5 + 0.3, LOT.z - 0.4, 0.1), m: white, cast: false })
     return out
   }, [])
 
+  const lotCars = useMemo(
+    () =>
+      [0, 1, 3, 4].map((b, i) => ({
+        x: LOT.x - 7 + 0.4 + (b + 0.5) * 2.64,
+        z: LOT.z - 2.6,
+        color: ['#2b2f36', '#d9d4c7', '#5c6b75', '#7a2a26'][i],
+        plate: `EK ${41020 + i * 233}`,
+      })),
+    [],
+  )
   const blocks = useMemo<BlockSpec[]>(
     () => [
-      { x: 30, z: 30, rot: -Math.PI * 0.75, w: 26, d: 16, floors: 1, color: '#d8cbb0', shop: { text: 'DAGLIGVARE', bg: '#2a6e3f', fg: '#ffffff', awning: '#2a6e3f' } },
+      { x: 36, z: 36, rot: -Math.PI * 0.75, w: 26, d: 16, floors: 1, color: '#d8cbb0', shop: { text: 'DAGLIGVARE', bg: '#2a6e3f', fg: '#ffffff', awning: '#2a6e3f' } },
       { x: -34, z: -30, rot: Math.PI / 4, w: 18, d: 14, floors: 4, color: '#a65c45', brick: true, balconies: true },
       { x: 32, z: -34, rot: -Math.PI / 4, w: 18, d: 14, floors: 5, color: '#c9d0cd', roof: 'hip', shop: { text: 'KAFÉ', bg: '#7b2d26', fg: '#f6efe2', awning: '#7b2d26' } },
       { x: -40, z: -52, rot: Math.PI / 2, w: 16, d: 13, floors: 5, color: '#d6c9b1' },
@@ -163,6 +179,22 @@ export function Roundabout({ quality }: { quality: QualitySettings }) {
       { x: -18, z: 17, kind: 'birch' },
       { x: -14, z: 46, kind: 'birch' },
       { x: 14, z: 62, kind: 'birch' },
+      // east quadrant + car park edge: the approach no longer opens onto an empty lawn
+      { x: 9.6, z: 38, kind: 'oak', s: 0.9 },
+      { x: 26, z: 23, kind: 'birch', s: 0.9 },
+      { x: 12, z: 46, kind: 'birch' },
+      { x: 40, z: 16, kind: 'oak', s: 1.1 },
+      { x: 50, z: 26, kind: 'birch', s: 1.1 },
+      { x: 58, z: 40, kind: 'spruce', s: 1.1 },
+      { x: 44, z: 52, kind: 'oak' },
+      { x: 62, z: 20, kind: 'spruce' },
+      // west quadrant beside the gang- og sykkelvei
+      { x: -16, z: 30, kind: 'spruce', s: 0.9 },
+      { x: -40, z: 22, kind: 'oak' },
+      { x: -44, z: 40, kind: 'birch' },
+      // closer forest edge so the horizon reads as wooded hills, not a field
+      ...scatter(-65, 65, -108, -74, Math.round(36 * f), 97, { spruce: 0.8, birch: 0.2 }).filter((p) => Math.abs(p.x) > 12),
+      ...scatter(-68, 68, 90, 130, Math.round(30 * f), 99, { spruce: 0.8, birch: 0.2 }).filter((p) => Math.abs(p.x) > 14),
       ...scatter(-150, 150, -220, -110, Math.round(90 * f), 91, { spruce: 0.85, birch: 0.15 }).filter((p) => Math.abs(p.x) > 10),
       ...scatter(-150, -70, -110, 130, Math.round(70 * f), 93, { spruce: 0.8, birch: 0.2 }).filter((p) => Math.abs(p.z) > 10),
       ...scatter(70, 150, -110, 130, Math.round(70 * f), 95, { spruce: 0.8, birch: 0.2 }).filter((p) => Math.abs(p.z) > 10),
@@ -209,6 +241,12 @@ export function Roundabout({ quality }: { quality: QualitySettings }) {
       <ParkedBike x={23.4} z={19.4} rot={-Math.PI * 0.75} variant={0} kick={0} />
       <RoadWear axis="z" at={0} from={g.outerR + 2} to={g.outerR + ARM} width={a * 2} />
       <Sign x={a + 0.6} z={58} kind="fart40" />
+      {quality.tier !== 'low' &&
+        lotCars.map((c, i) => (
+          <group key={i} position={[c.x, 0, c.z]} rotation-y={i % 2 ? 0 : Math.PI}>
+            <Car get={() => ({ x: c.x, z: c.z, h: i % 2 ? 0 : Math.PI, v: 0, a: 0, visible: true, indicator: null, pose: 'idle', face: null })} color={c.color} parked plate={c.plate} body={i % 2 ? 'estate' : 'hatch'} />
+          </group>
+        ))}
     </group>
   )
 }

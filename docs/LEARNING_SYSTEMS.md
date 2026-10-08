@@ -148,3 +148,41 @@ cues depends on their distance. Everything is procedural placeholder audio.
 impact, a Nordic suburban ambience (birds, distant traffic, wind in birch), footsteps, a bike bell
 and freewheel, a child's voice/ball bounce cue, a UI set (select/correct/miss/xp/level-up), and
 **instructor voice-over in Norwegian** (about 40 route and coaching lines, bokmål; nynorsk optional).
+
+### Phase 3 audio additions
+
+* **Engine:** 4 harmonic partials (triangle/sine) with LFO amplitude modulation, a 3-gear model
+  with load and engine braking. **Tyres:** speed-dependent band-passed noise and brake scrub.
+  **Ambience bus:** traffic rumble, air and wind layers plus occasional birds; stopped with the scene.
+* **Replay transition:** a short «rewind» sweep when the replay starts. No arcade stingers, no
+  coin sounds.
+
+## 11. Instructor voice (`src/audio/voice.ts`)
+
+Every spoken line has an id and a text (`VOICE_LINES`: start, turn, stop, look-around coaching,
+next right/left, straight on, pull over, roundabout exits, done). Each line plays in this order:
+1. a recorded file `public/assets/voice/<id>.mp3` if the id is in `RECORDED` (empty today);
+2. otherwise a Norwegian browser voice (nb/no/nn) through `speechSynthesis`, if one exists;
+3. otherwise text only. The text is always shown, so audio is never required.
+
+The «Stemme på/av» toggle is saved in localStorage (`kjor-voice`). Recording the ~40 lines means
+dropping files in and listing their ids. No code changes are needed.
+
+## 12. Replay signature: FREEZE → REPLAY → HIGHLIGHT → WHAT YOU MISSED → RULE → TRY AGAIN
+
+1. **Freeze** (1.1 s hold on the moment of the mistake).
+2. **Replay in two stages:** first from the driver's own chase view («Replay · din utsikt»), then a
+   crane up to the overhead teaching view («ovenfra»). Highlight rings show the hazard.
+3. **Two-line caption:** line 1 is what you did see, line 2 (yellow, after the reveal) is what you
+   missed. Example from S2: «Ballen var varselet.» / «Barnet kom etter.» Captions are scenario
+   content (`OutcomeContent.replay`).
+4. **Mistake card** with the rule (diagram + rule-card title + source), then «Prøv igjen».
+
+## 13. Observation groundwork (practice mode)
+
+Every head check (Q/E or the «Se» buttons) is logged with time, side and the context it came before
+(`Observation { t, side, before }`). The assessment shows the sequence as chips («se høyre → se
+venstre → kryss»). The data model is ready for mirror and blind-spot checks; the UI has left/right
+today. Assessment events now carry **WHAT HAPPENED + WHY IT MATTERED + WHAT TO PRACTISE** (`COACH`
+table in `src/practice/session.ts`). The indicator cancels itself after a turn (>1.1 rad heading
+change with the wheel straightened).

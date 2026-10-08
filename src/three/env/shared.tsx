@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { surface } from '../render/materials'
 import { curbGeo, groundPlane, withMacroVariation, worldBox } from '../render/streetkit'
+import { scatter, type TreeInstance } from '../render/vegetation'
 
 /** Shared benchmark-environment helpers (one material instance per surface across all City scenes). */
 
@@ -71,4 +72,13 @@ export function prng(seed: number) {
     s = (s * 16807) % 2147483647
     return (s & 0xffff) / 0xffff
   }
+}
+
+/**
+ * Dense forest edge just past the far end of a road (z < zEnd), so the road
+ * disappears into trees instead of running out into an empty field at the
+ * horizon. Instanced trees: no extra draw calls.
+ */
+export function roadEndForest(zEnd: number, foliage: number, seed: number, halfWidth = 46): TreeInstance[] {
+  return scatter(-halfWidth, halfWidth, zEnd - 40, zEnd - 3, Math.round(70 * Math.max(0.5, foliage)), seed, { spruce: 0.8, birch: 0.2 })
 }

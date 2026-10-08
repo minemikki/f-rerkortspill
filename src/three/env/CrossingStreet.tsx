@@ -7,7 +7,7 @@ import { surface } from '../render/materials'
 import type { QualitySettings } from '../render/quality'
 import { Drain, ForestHills, Hedge, Manhole, NorHouse, RoadWear, StreetLight, groundPlane, worldBox } from '../render/streetkit'
 import { Trees, scatter, type TreeInstance } from '../render/vegetation'
-import { Statics, groundStatic, roadStrip, sidewalkRun, type Static, KERB_H } from './shared'
+import { Statics, groundStatic, roadStrip, sidewalkRun, type Static, KERB_H, roadEndForest } from './shared'
 
 /**
  * S4 «Fotgjengeren» — small-town main street (7 m, centre line) with a
@@ -78,6 +78,7 @@ export function CrossingStreet({ quality }: { quality: QualitySettings }) {
       ...scatter(28, 90, -160, 80, Math.round(90 * f), 81, { spruce: 0.75, birch: 0.25 }),
       ...scatter(-90, -28, -160, 80, Math.round(90 * f), 83, { spruce: 0.75, birch: 0.25 }),
       ...scatter(-120, 120, -230, -160, Math.round(80 * f), 85, { spruce: 0.85, birch: 0.15 }).filter((p) => Math.abs(p.x) > 10),
+      ...roadEndForest(Z.from, f, 87),
     ]
   }, [quality.foliage])
 
@@ -96,7 +97,7 @@ export function CrossingStreet({ quality }: { quality: QualitySettings }) {
         <Hedge x={-OUT - 0.6} z={-34} w={0.9} d={14} h={1.1} seed={7} />
         <StreetLight x={R + 0.45} z={-H - 1.2} rot={-Math.PI / 2} />
         <StreetLight x={-R - 0.35} z={H + 1.2} rot={Math.PI / 2} />
-        <StreetLight x={R + 0.45} z={30} rot={-Math.PI / 2} />
+        <StreetLight x={R + 0.45} z={46} rot={-Math.PI / 2} />
         <StreetLight x={-R - 0.35} z={-30} rot={Math.PI / 2} />
         <Drain x={R - 0.3} z={-6} />
         <Drain x={-R + 0.3} z={6} />

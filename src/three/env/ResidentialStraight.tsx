@@ -6,7 +6,7 @@ import { surface } from '../render/materials'
 import type { QualitySettings } from '../render/quality'
 import { Drain, ForestHills, Hedge, MailboxStand, Manhole, NorHouse, PicketFence, RoadWear, StreetLight, UtilityCabinet, WheelieBin, groundPlane, type HouseSpec } from '../render/streetkit'
 import { Trees, scatter, type TreeInstance } from '../render/vegetation'
-import { Statics, groundStatic, roadStrip, sidewalkRun, type Static } from './shared'
+import { Statics, groundStatic, roadStrip, sidewalkRun, type Static, roadEndForest } from './shared'
 
 /**
  * S2 «Ballen» — a straight residential street (8 m, no markings, 30 zone)
@@ -92,6 +92,7 @@ export function ResidentialStraight({ quality }: { quality: QualitySettings }) {
     t.push(...scatter(28, 90, -160, 80, Math.round(90 * f), 71, { spruce: 0.75, birch: 0.25 }))
     t.push(...scatter(-90, -28, -160, 80, Math.round(90 * f), 73, { spruce: 0.75, birch: 0.25 }))
     t.push(...scatter(-120, 120, -230, -160, Math.round(80 * f), 77, { spruce: 0.85, birch: 0.15 }).filter((p) => Math.abs(p.x) > 10))
+    t.push(...roadEndForest(Z.from, f, 79))
     return t
   }, [L, quality.foliage])
 

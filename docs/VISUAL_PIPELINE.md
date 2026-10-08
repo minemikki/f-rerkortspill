@@ -37,31 +37,63 @@ fetched and processed reproducibly by `scripts/assets/fetch_assets.py`, `foliage
 
 ## Performance (measured)
 
-Measured with `window.__perf()` (dev). This renders the scene once through the WebGL
-renderer, **including the shadow pass and excluding post FX**. Viewport 1280×720, S1 mid-drive.
+Measured with `window.__perf()` (dev). It renders the scene once through the WebGL renderer,
+**including the shadow pass and excluding post FX**, at 1280×720 in S1 mid-drive, with the tier
+forced by `?quality=`.
 
-| Tier | Draw calls | Triangles | Textures | Programs | Shadows | Post FX |
+| Tier | Draw calls | Triangles | Textures (GL) | Programs | Shadows | Post FX |
 |---|---|---|---|---|---|---|
-| high | 222 | 308 k | 94 | 73 | 2048² PCF | AO + bloom + AgX + SMAA |
-| medium | 222 | 276 k | 66 | 62 | 1024² PCF | AgX + SMAA |
-| low | 145 | 149 k | 56 | 36 | off | off (renderer AgX) |
+| **Phase 2 final** high | 222 | 308 k | 94 | 73 | 2048² PCF | AO + bloom + AgX + SMAA |
+| **Phase 2 final** medium | 222 | 276 k | 66 | 62 | 1024² PCF | AgX + SMAA |
+| **Phase 2 final** low | 145 | 149 k | 56 | 36 | off | off |
+| **Phase 3** high | 271 | 428 k | 136* | 81 | 2048² PCF | AO + bloom + AgX + SMAA |
+| **Phase 3** medium | 255 | 384 k | 107* | 70 | 1024² PCF | AgX + SMAA |
+| **Phase 3** low | 146 | 202 k | 95* | 40 | off | off |
 
-* Before optimisation the same view cost 286 / 192 calls (high / low). Merging the picket
-  fences into the static batch, merging the car body and cabin, putting the brake disc in the
-  rim mesh, and sharing the lamp-lens and manhole materials removed about 60 calls.
-* The shadow pass is about 75 calls and doubles the triangle count. That is why `low` disables it.
-* Post FX on high adds about 10–15 fullscreen passes (N8AO half-res, mip bloom, SMAA). It is
-  the largest fill-rate cost and is off on medium/low.
-* **Estimated texture memory** (RGBA8 + mips): asphalt 1k ×3 ≈ 16 MB, 9 other surfaces 512² ×3 ≈ 38 MB,
-  foliage ≈ 10–15 MB, sky 4k ≈ 45 MB (high) / 2k ≈ 11 MB (medium/low), PMREM ≈ 6–8 MB,
-  shadow map 16 MB (high) / 4 MB (medium). Totals: high ≈ 150 MB, medium ≈ 100 MB.
-  **The next win is KTX2/Basis texture compression**, which would cut this 4–6×.
-* **FPS:** not measurable in this environment (software WebGL / SwiftShader renders about
-  1 fps at any tier). Real-device numbers are still **unmeasured**. The adaptive tier system
-  exists so that weak phones degrade gracefully. Measuring on a mid-range Android and an
-  iPhone is a top-priority next step.
-* Bundle: the 3D chunk (three + R3F + postprocessing) is 408 kB gzip and lazy-loaded. The app shell is 159 kB gzip.
-* The canvas stops rendering under full-screen overlays (learning loop, result, report).
+\* The GL texture count includes the 1×1 KTX2 placeholders (4 bytes each), so it is not
+comparable to the phase-2 column. Real texture memory is in the KTX2 table below.
+
+What phase 3 added to S1: skinned people (1 call each), a detailed hatch/estate fleet with
+driveway cars, garden storytelling (flower beds, shrubs, trampolines, patio sets, stone walls),
+porches and steps, curtains and house numbers. A first measurement after adding them gave
+**high 316 calls / 487 k tris**. Three trims brought it to the numbers above (the final numbers also include the road-end forest edges):
+* trampolines and patio sets moved into the static merge batch (−46 calls);
+* driveway cars capped per tier (3 high / 2 medium / 0 low);
+* flower beds: fewer, lower-poly blooms, and they no longer cast shadows (−85 k tris in the
+  shadow pass).
+
+Low stays at the phase-2 budget (146 calls).
+
+* **Shadow pass (measured by toggling it off):** high 71 calls / 166 k tris, medium 73 calls /
+  148 k tris, which is about 26 % of the calls and 39 % of the triangles. That is why low disables it.
+* **Post FX (high only):** 10–15 fullscreen passes (N8AO half-res, mip bloom, SMAA). This is the
+  largest fill-rate cost.
+
+### Texture compression (KTX2 / Basis Universal)
+
+All 42 surface and foliage textures now ship as KTX2 (ETC1S + mipmaps, normal maps with the
+normal-map preset), transcoded in a worker to the GPU's native block format (BC7/BC3, ETC2 or
+ASTC). JPG/PNG remain as the fallback (`?ktx2=0`). Pending textures show a neutral 1×1
+placeholder (the tint colour, never black). Foliage stays invisible until loaded.
+
+| | JPG/PNG (decoded RGBA8 + mips) | KTX2 (GPU-compressed) |
+|---|---|---|
+| S1 surface + foliage textures in VRAM | **64.3 MB** | **16.1 MB** (−75 %) |
+| Download, all textures | 3.0 MB | 2.7 MB + 0.5 MB transcoder (wasm, cached, 3D only) |
+| Quality (PSNR vs. source) | — | asphalt 30.2 dB, brick normal 31.7 dB, plaster 40.5 dB; no visible difference at gameplay distance |
+
+Measured with `__perf().tex` (sums the actual transcoded mip data). With the sky (4k high / 2k
+medium), PMREM and shadow maps, the estimated total GPU texture memory is now **≈ 100 MB high /
+≈ 50 MB medium** (was ≈ 150 / 100 MB). Rebuild with `scripts/assets/build_ktx2.sh`.
+
+* **FPS:** not measurable here (SwiftShader software WebGL renders about 1 fps on any tier). It is
+  **still unmeasured on real phones**, and that is the top-priority next step. The adaptive tier
+  system drops a tier automatically when frames are slow.
+* **Bundle (gzip):** app shell 163 kB (+4 kB), 3D vendor chunk (three + R3F + postprocessing)
+  408 kB, lazy-loaded; GameScene 50 kB; PracticeScreen 11 kB. KTX2Loader adds ~6 kB to the 3D
+  chunk.
+* The canvas stops rendering under the result screen. Behind the learning loop it keeps
+  rendering the slow orbit of the scene, on purpose ("never leave the game").
 
 ## Migrating a scene to the benchmark look
 

@@ -341,9 +341,10 @@ export function SpotOverlay({ ui, runner, content }: { ui: RunnerUI; runner: Sce
   const sc = content.steps[step.id]
   return (
     <motion.div className="pointer-events-none absolute inset-0 z-30" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.25 } }}>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_55%,transparent_40%,rgba(10,14,19,0.6)_90%)]" />
-      <div className="absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-ink/90 via-ink/50 to-transparent" />
-      <div className="relative mx-auto w-full max-w-md px-4 pt-[calc(var(--safe-top)+70px)]">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_55%,transparent_50%,rgba(10,14,19,0.32)_95%)]" />
+      <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-ink/85 via-ink/40 to-transparent md:inset-x-auto md:left-0 md:h-full md:w-[460px] md:bg-gradient-to-r md:from-ink/70 md:via-ink/25" />
+      {/* phones: top band; desktop: left column, so the road ahead stays clear */}
+      <div className="relative mx-auto w-full max-w-md px-4 pt-[calc(var(--safe-top)+70px)] md:mx-0 md:ml-8 md:max-w-[400px]">
         <motion.div initial={{ y: -14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, ease }}>
           <div className="flex items-center justify-between">
             <div className="eyebrow flex items-center gap-2 text-go">

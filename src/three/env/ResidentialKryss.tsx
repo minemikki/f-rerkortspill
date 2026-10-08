@@ -30,7 +30,7 @@ import {
 } from '../render/streetkit'
 import { Trees, scatter, type TreeInstance } from '../render/vegetation'
 import { Car } from '../models'
-import { envMats } from './shared'
+import { envMats, roadEndForest } from './shared'
 
 /**
  * VISUAL BENCHMARK — S1 "Uregulert kryss i boligfelt".
@@ -228,6 +228,7 @@ export function ResidentialKryss({ quality }: { quality: QualitySettings }) {
     t.push(...scatter(-150, 150, -230, -150, Math.round(110 * f), 53, { spruce: 0.85, birch: 0.15 }).filter((p) => Math.abs(p.x) > 8))
     t.push(...scatter(-160, -90, -150, 110, Math.round(70 * f), 61, { spruce: 0.85, birch: 0.15 }))
     t.push(...scatter(90, 160, -150, 110, Math.round(70 * f), 67, { spruce: 0.85, birch: 0.15 }))
+    t.push(...roadEndForest(NS.from, f, 71))
     return t
   }, [L, quality.foliage])
 

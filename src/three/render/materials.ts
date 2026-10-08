@@ -66,7 +66,7 @@ export function textureStats() {
   let bytes = 0
   texCache.forEach((t) => {
     const ct = t as THREE.CompressedTexture
-    if (ct.isCompressedTexture && ct.mipmaps?.length) {
+    if (ct.isCompressedTexture && ct.userData.ktx2) {
       compressed++
       for (const m of ct.mipmaps) bytes += (m as { data: ArrayBufferView }).data.byteLength
     } else {
@@ -77,20 +77,35 @@ export function textureStats() {
   return { count: texCache.size, compressed, mb: +(bytes / 1048576).toFixed(1) }
 }
 
-/** KTX2 path: a CompressedTexture shell that is filled in once the transcode finishes. */
+/**
+ * KTX2 path: a CompressedTexture that starts as a neutral 1×1 RGBA
+ * placeholder (surfaces show their tint, foliage cards stay invisible, never
+ * black) and switches to the transcoded source when the worker finishes.
+ */
+function placeholderPixel(file: string): Uint8Array {
+  if (file.endsWith('.png')) return new Uint8Array([0, 0, 0, 0])
+  if (file.includes('_nor')) return new Uint8Array([128, 128, 255, 255])
+  if (file.includes('_arm')) return new Uint8Array([255, 235, 0, 255])
+  return new Uint8Array([214, 214, 214, 255])
+}
+
 function loadKTX2(file: string, srgb: boolean): THREE.Texture {
-  const t = new THREE.CompressedTexture([], 0, 0)
+  const t = new THREE.CompressedTexture([{ data: placeholderPixel(file), width: 1, height: 1 }], 1, 1, THREE.RGBAFormat as unknown as THREE.CompressedPixelFormat, THREE.UnsignedByteType)
   t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace
+  t.generateMipmaps = false
+  t.minFilter = THREE.LinearFilter
+  t.needsUpdate = true
   ktx2!.load(
     KTX2_BASE + file.replace(/\.(jpg|png)$/, '.ktx2'),
     (c) => {
       const src = c as THREE.CompressedTexture
+      // a new Source makes three allocate a fresh GL texture of the right size/format
+      t.source = src.source
       t.mipmaps = src.mipmaps
-      t.image = src.image
       t.format = src.format
       t.type = src.type
       t.minFilter = src.mipmaps.length > 1 ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter
-      t.generateMipmaps = false
+      t.userData.ktx2 = true
       t.needsUpdate = true
     },
     undefined,
@@ -104,8 +119,7 @@ export function setTextureAnisotropy(a: number) {
   texCache.forEach((t) => {
     if (t.anisotropy === a) return
     t.anisotropy = a
-    const pending = (t as THREE.CompressedTexture).isCompressedTexture && !(t as THREE.CompressedTexture).mipmaps?.length
-    if (t.image && !pending) t.needsUpdate = true
+    if (t.image) t.needsUpdate = true
   })
 }
 
@@ -134,7 +148,7 @@ interface SurfaceOpts {
 
 const DEFAULTS: Record<SurfaceId, SurfaceOpts> = {
   asphalt: { tile: 3.2, color: '#a3a29e', normalScale: 0.9 },
-  pavement: { tile: 2.4, color: '#c9c6bf', normalScale: 0.8 },
+  pavement: { tile: 2.4, color: '#d8d5ce', normalScale: 0.8 },
   granite: { tile: 1.6, color: '#b9b8b4', normalScale: 0.6 },
   grass: { tile: 2.2, color: '#9fae7c', normalScale: 0.9 },
   gravel: { tile: 1.8, color: '#c4bba9', normalScale: 1 },

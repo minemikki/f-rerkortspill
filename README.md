@@ -14,6 +14,7 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # typecheck + produksjonsbygg
 npm test           # scenario-regresjonstester (alle grener, kollisjonssjekk)
+scripts/assets/build_ktx2.sh   # bygg KTX2-teksturer på nytt fra public/assets/tex
 ```
 
 Nyttige URL-er i dev:
@@ -27,11 +28,13 @@ Nyttige URL-er i dev:
 | `/#/teori` | Teoritrening (demonstrator, med/uten tid, feilgjennomgang, «Tren dette») |
 | `/#/ovelse` | Øvelseskjøring: kjør selv i S1-krysset, KJØREVURDERING etterpå |
 | `/#/provekjoring` | Simulert prøvekjøring (exam-modus: bare veibeskrivelse, ingen hint) |
-| `/#/lab?view=car` | (kun dev) Asset lab for look-dev |
+| `/#/lab?view=car\|rear\|side\|house\|trees\|people\|rider\|fleet` | (kun dev) Asset lab for look-dev |
 | `?quality=high\|medium\|low`, `?hq` | Tving kvalitetsnivå (slår av automatisk nedtrekk) |
+| `?ktx2=0` | Bruk JPG-teksturer i stedet for KTX2 (A/B-måling) |
 
 Dokumentasjon: [docs/VISUAL_PIPELINE.md](docs/VISUAL_PIPELINE.md) · [docs/LEARNING_SYSTEMS.md](docs/LEARNING_SYSTEMS.md) ·
-[docs/ASSET_AUDIT.md](docs/ASSET_AUDIT.md) · [docs/THREEJS_VS_UNREAL.md](docs/THREEJS_VS_UNREAL.md) · skjermbilder i [docs/screenshots](docs/screenshots/).
+[docs/ASSET_AUDIT.md](docs/ASSET_AUDIT.md) · [docs/THREEJS_VS_UNREAL.md](docs/THREEJS_VS_UNREAL.md) ·
+[docs/SIGNAGE_AUDIT.md](docs/SIGNAGE_AUDIT.md) · skjermbilder i [docs/screenshots](docs/screenshots/).
 
 ## Arkitektur
 
@@ -53,9 +56,12 @@ src/
   practice/          Øvelseskjøring: kinematisk bil, instruktørrute, evaluator → KJØREVURDERING
   three/             React Three Fiber: miljøer, modeller, kamera, lys, highlights
     render/          Visuell pipeline: kvalitetsnivåer, PBR-materialer, HDRI-lys, post FX, trær, gatekit, bil
-    env/             Benchmark-miljøer (ResidentialKryss = S1)
+    env/             Premium-miljøer: S1 ResidentialKryss, S2 ResidentialStraight, S3 CityStreet, S4 CrossingStreet, S5 Roundabout
+    render/characters.tsx  Prosedyriske skinned mennesker (voksen/barn/jogger) og syklist med bein-IK
+    render/citykit.tsx     Bygårder, butikkfasader, oppmerking, gatemøbler
   ui/                Skjermer (landing, kart, spill, faglig) og overlays
-  audio/sfx.ts       Prosedyrisk WebAudio-lyd (motor, blinklys, horn, sykkelbjelle, feedback)
+  audio/sfx.ts       Prosedyrisk WebAudio-lyd (motor med gir/last, dekkstøy, ambience, UI, replay)
+  audio/voice.ts     Instruktørstemme: innspilt fil → norsk TTS → kun tekst
   state/             Zustand: progresjon, læring/mestring (localStorage) og navigasjon
 ```
 

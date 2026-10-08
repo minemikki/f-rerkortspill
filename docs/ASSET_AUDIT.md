@@ -1,24 +1,31 @@
-# Asset bottleneck report
+# Asset quality report (phase 3)
 
-Grades: **A** = usable for production direction · **B** = acceptable prototype · **C** = must be replaced.
-Graded against the S1 benchmark and the art-direction reference (premium Nordic driving simulator).
+Grades: **A** = production quality · **B** = credible prototype, could ship in a beta · **C** = must be replaced before a commercial launch.
+Graded against the art-direction reference (premium Nordic driving game) at gameplay camera distance, not in close-up.
+Everything below is procedural code or CC0. No asset has a licence restriction.
 
-| Category | Grade | Today | What it takes to get to A |
+| Asset | Grade | Today (after phase 3) | Exact next requirement (for every C) |
 |---|---|---|---|
-| Player car | **B−** | Procedural hatchback (vehicles.tsx). Correct proportions, wheels/tyres, paint with clearcoat, inset glass, working brake lights and indicators, Norwegian plates, body pitch and roll. Faceted, with no interior and no headlight internals. | An authored glTF compact hatchback: LOD0 25–40 k tris, LOD1 8 k, LOD2 2 k; 2K PBR atlas plus an emissive mask; separate nodes `wheel_FL/FR/RL/RR`, `brake_L/R`, `ind_L/R`, `head_L/R`; a simple interior (seats, dashboard, wheel); CC0/CC-BY or purchased licence. |
-| Traffic vehicles | **B− (cars) / C (van, bus)** | Cars reuse the hatchback with paint and plate variation. Van and bus are the old box models (C). | **Needed:** a Transit-class van (white, signage-ready) and a 12 m low-entry Norwegian city bus with livery slot, plus 2–3 extra car body types (estate, compact SUV, EV hatch). Same node contract and LODs as above, about 15–30 k tris each. |
-| People | **C** | Stylised capsule people with procedural walk/look poses. | **Needed:** 6–8 rigged low-poly humans (adult m/f, senior, teenager, two children), 5–8 k tris, Nordic clothing for the seasons. Animations: idle, walk, run, phone, look-left/right, wave, recoil, crouch, step-off-kerb. A Mixamo-compatible skeleton so the clips can be shared. |
-| Cyclists | **C** | Primitive bike and rider. | **Needed:** a rigged cyclist plus a city bike and an e-bike, a helmet variant and a child on a small bike. Clips: pedal cycle (speed-synced), coast, look-back, hand-signal left/right, stop with foot down. |
-| Trees | **B** | Card trees (oak, birch, spruce) with wind, instanced. Convincing at gameplay distance; branch detail is weak close up. | 4 authored species (birch, spruce, pine, rowan) with real branch cards and LODs plus an octahedral impostor for far distances (SpeedTree export or CC0 photoscan). |
-| Houses | **B** | Procedural Norwegian timber house: PBR siding in 10 colours, white trims, windows with frames and sills, gutters, downpipes, chimney, porch. One typology. | A modular kit of 3–4 typologies (1950s enebolig, 70s split-level, rekkehus, modern funkis), with porches and steps, door hardware, curtains (window interior maps), garages and carports. |
-| Road | **B+** | PBR asphalt with macro variation and a wear overlay (kerb grime, tyre polish, crack sealing, patches), drains and manholes. | A decal atlas (oil stains, patches, wet patches, sand in spring), markings for the other scenes as decals, and parallax-occlusion asphalt on high. |
-| Curbs / sidewalks | **B+** | Granite kerbs with rounded corners, paved sidewalks, rounded corner paving. | Lowered kerbs at driveways and crossings, tactile paving and gutter strips. |
-| Street furniture | **B** | Street lights, mailbox stand, utility cabinet, bins, drains, manholes, picket fences, hedges. | Authored low-poly versions with real details (lamp type used by Norwegian municipalities, Posten mailbox stand), bus stop and bike rack. |
-| Signs | **B−** | Canvas-texture signs (30-sone, gangfelt, vikeplikt, buss) and SVG signs in theory questions. | An exact Norwegian sign set from Skiltforskriften geometry (SVG to texture atlas), retroreflective material, correct pole and back-plate hardware and mounting heights. |
-| Background terrain | **B−** | Forested hill ring with procedural canopy texture, spruce belts, HDRI sky. | Heightmap terrain with photoscan forest textures, an impostor forest belt, and a mountain silhouette tile matching Norwegian topography (e.g. derived from Kartverket DTM). |
-| Animations | **C (humans) / B (vehicles)** | Vehicles have wheel spin, pitch and roll, brake lights and indicators. People use procedural poses. | Come with the people and cyclist assets above; plus vehicle steering-wheel animation and door open/close for the practice mode. |
-| Audio | **C** | Procedural WebAudio placeholders. | See *Audio architecture* in `LEARNING_SYSTEMS.md`: recorded engine loops, tyre noise, ambience, footsteps, bike, UI set, and Norwegian instructor VO (about 40 lines). |
-| S2–S5 environments | **C (vs benchmark)** | The classic stylised low-poly look. They work, but are visibly below S1. | Migrate with the street kit (bygate, gangfelt, rundkjøring, boliggate). That is mostly composition work; the kit already exists. |
+| Player car | **B** | Extruded, Chaikin-smoothed hatch profile, clearcoat paint, inset glass, L-shaped tail lights, working brake/indicator lights, Norwegian plate, pitch/roll. No interior. | glTF compact hatch, LOD0 25–40 k / LOD1 8 k / LOD2 2 k tris, 2K PBR atlas + emissive mask, nodes `wheel_*`, `brake_*`, `ind_*`, `head_*`, simple interior. |
+| Traffic cars | **B** | Hatch + estate body types, 5 paints, unique plates per id, parked variants on driveways. | 2 more body types (compact SUV, EV saloon) on the same node contract. |
+| Bus | **B−** | 12 m low-entry city bus: extruded body, two door sets, wheel arches, destination sign «31 Sentrum via Torget». Tinted glass hides the missing interior. | Authored bus with interior (seats, poles), livery slot, articulated-door animation. |
+| Van | **B** | 5.4 m panel van, sliding-door seam, plate, no branding. | Authored van with signage slot and opening rear doors (for the S2 obstruction storytelling). |
+| Adult pedestrian | **C** | Procedural skinned mesh (16 bones, one draw call). Smooth lathe body, coat/trousers/shoes in vertex colour, procedural walk/idle/look/wait/step. Reads as a person at distance, mannequin-like up close. No face or hair detail. | 4 rigged adults (m/f, senior, teen), 5–8 k tris, 1K texture, Nordic autumn clothing. Mixamo-compatible skeleton. Clips: idle, walk, look L/R, wait-at-kerb, step-off, recoil, phone. |
+| Child | **C** | Same rig scaled to child proportions, bright outfits, ball-chase run. | 2 rigged children (6–9 y) with run, stop-short and look-back clips, and a cap/hood variant. |
+| Jogger | **C** | Adult rig, shorts outfit, jog gait. | Jogger model with sportswear texture plus jog and look-over-shoulder clips (can share the adult skeleton). |
+| Cyclist | **C** | Skinned rider on a procedural city bike with 2-bone leg IK (pedals turn with speed), helmet. No glowing marker during observation. | Rigged cyclist + city bike + e-bike, clips: pedal (speed-synced), coast, look-back, hand signal L/R, foot-down stop. |
+| Trees | **B** | Instanced card trees (oak, birch, spruce) with wind; KTX2 foliage. | 4 authored species with branch cards + LODs + octahedral impostors. |
+| Shrubs / hedges | **B−** | Hedge boxes with leaf texture, rounded shrub blobs, flower beds (one vertex-coloured mesh). | Card-based shrub set (3 species) with LOD, and a clipped-hedge model with a real leaf silhouette on top. |
+| Houses | **B** | Norwegian timber houses: 10 siding colours, porch, 3 steps, railing, house numbers, curtains, chimneys, gutters. City blocks in plaster/brick with surface-mounted windows, shopfronts, signage. | Modular kit with 3–4 typologies (enebolig, rekkehus, funkis, 4-storey bygård), garages and carports. |
+| Road | **B+** | PBR asphalt (KTX2), macro variation, wear overlay, worn markings, drains, manholes. | Decal atlas (patches, oil, sand), parallax asphalt on high. |
+| Kerbs / sidewalks | **B+** | Granite kerbs with rounded corners, paving, lowered kerbs and tactile pads at the S4 crossing. | Lowered kerbs at every driveway and tactile paving at S5. |
+| Street furniture | **B** | Lights, bus shelters, benches, bike racks, bollards, planters, litter bins, tree grates, mailboxes, wheelie bins. | Authored low-poly set matching Norwegian municipal models. |
+| Signs | **B** | Regulation-checked set (202, 362, 512, 516; markings 1002/1004/1008/1012/1022/1024), see `SIGNAGE_AUDIT.md`. Canvas textures. | SVG-exact sign atlas from skiltforskriften geometry, retroreflective material, real mounting heights. |
+| Terrain | **B−** | Forested hill ring + instanced spruce belts. | Heightmap terrain with photoscan forest texture and an impostor forest belt. |
+| Sky | **B** | CC0 HDRI (Poly Haven) with clamped sun, 4k high / 2k medium. | An overcast and an evening HDRI for variety. |
+| Animations | **C** | Procedural gaits and poses; vehicles have wheel spin, steering, pitch/roll and lights. | Comes with the human/cyclist assets above (mocap-quality clips). |
+| Sound | **C** | Procedural WebAudio: 4-partial engine with gears and load, tyre noise, brake scrub, ambience bed, UI set, replay «rewind». The voice uses the browser's Norwegian TTS, with a text fallback. | Recorded engine loop set (idle / 2k / 4k rpm × on/off load), tyre roll, indicator relay, ambience (street, birds, distant traffic), and about 40 recorded Norwegian instructor lines (IDs already in `src/audio/voice.ts`). |
 
-**Biggest single lever:** people and cyclists. Vulnerable road users are the core of the
-curriculum, and they are now the least credible thing on screen next to the S1 street.
+**Biggest lever now:** the humans, children and cyclist (all C). The environment is at B/B+
+and the cars at B, so the vulnerable road users are what most give away «prototype».
+Authored, rigged characters are the single purchase that closes most of the remaining gap.

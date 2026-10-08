@@ -309,10 +309,21 @@ export function hatchGeos(type: BodyType = 'hatch'): HatchGeos {
   // mirror housings in body colour → go into "body" merge below
   const mirrors: THREE.BufferGeometry[] = []
   for (const s of [-1, 1]) {
-    const m = new THREE.SphereGeometry(0.1, 10, 8)
-    m.scale(1.1, 0.75, 0.8)
-    m.translate(s * (hw + 0.1), 1.03, 0.72)
+    // rounded housing: a segmented box pulled 45 % towards its inscribed ellipsoid
+    const m = new THREE.BoxGeometry(0.22, 0.13, 0.11, 4, 3, 3)
+    const pa = m.attributes.position as THREE.BufferAttribute
+    const v = new THREE.Vector3()
+    for (let i = 0; i < pa.count; i++) {
+      v.fromBufferAttribute(pa, i)
+      const e = v.clone().divide(new THREE.Vector3(0.11, 0.065, 0.055)).normalize().multiply(new THREE.Vector3(0.11, 0.065, 0.055))
+      v.lerp(e, 0.45)
+      pa.setXYZ(i, v.x, v.y, v.z)
+    }
+    m.computeVertexNormals()
+    m.translate(s * (hw + 0.13), 1.03, 0.72)
     mirrors.push(m.toNonIndexed())
+    // mirror glass facing backwards
+    trimParts.push(box(0.17, 0.09, 0.01, s * (hw + 0.14), 1.03, 0.66))
   }
   const bodyAll = mergeGeometries([body, ...mirrors].map(stripToPN), false)!
 
