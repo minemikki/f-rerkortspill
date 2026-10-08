@@ -167,7 +167,7 @@ export const QUESTIONS: TheoryQuestion[] = [
     linkedScenarioIds: ['s1-hoyreregel'],
     learningObjectiveIds: ['lo-skilt-foran-regler'],
     skills: { trafficRules: 1, intersections: 0.5 },
-    sourceMetadata: [tr('§ 3 nr. 1'), skilt('Skilt 208 Forkjørsveg')],
+    sourceMetadata: [tr('§ 3 nr. 1'), skilt('Skilt 206 Forkjørsveg')],
   },
 
   /* ───────────── S2 · ballen ───────────── */

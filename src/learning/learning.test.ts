@@ -151,3 +151,15 @@ describe('daily plan', () => {
     expect(p.items.find((i) => i.kind === 'challenge' || i.kind === 'scenario')?.scenarioId).toBe('s3-syklisten')
   })
 })
+
+describe('sign citations', () => {
+  it('every «Skilt NNN» source matches skiltforskriften (number + name)', async () => {
+    const { checkSignCitation } = await import('./signs')
+    const cites = [...QUESTIONS.flatMap((q) => q.sourceMetadata), ...Object.values(RULE_CARDS).map((r) => r.source)]
+      .filter((s) => s.title === 'Skiltforskriften' && s.section?.startsWith('Skilt'))
+      .map((s) => s.section!)
+    expect(cites.length).toBeGreaterThan(0)
+    for (const c of cites) expect(checkSignCitation(c), c).not.toBeNull()
+    expect(checkSignCitation('Skilt 208 Forkjørsveg')).toBeNull()
+  })
+})
