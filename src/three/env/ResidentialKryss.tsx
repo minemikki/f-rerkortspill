@@ -16,15 +16,21 @@ import {
   StreetLight,
   UtilityCabinet,
   WheelieBin,
+  FlowerBeds,
+  GardenSet,
+  Shrub,
+  StoneWall,
+  Trampoline,
   cornerGeo,
   curbArcGeo,
   curbGeo,
   groundPlane,
-  withMacroVariation,
   worldBox,
   type HouseSpec,
 } from '../render/streetkit'
 import { Trees, scatter, type TreeInstance } from '../render/vegetation'
+import { Car } from '../models'
+import { envMats } from './shared'
 
 /**
  * VISUAL BENCHMARK — S1 "Uregulert kryss i boligfelt".
@@ -53,8 +59,8 @@ const COLORS = ['#8e2f25', '#e2c46d', '#f0ece2', '#e8dcb5', '#7d95a3', '#3f5c4d'
 let groundMat: THREE.MeshStandardMaterial | null = null
 let asphaltMat: THREE.MeshStandardMaterial | null = null
 function mats() {
-  if (!groundMat) groundMat = withMacroVariation(surface('grass', { tile: 2.6, color: '#e2ead0' }).clone(), 0.02, 0.22, 'macro-grass')
-  if (!asphaltMat) asphaltMat = withMacroVariation(surface('asphalt').clone(), 0.03, 0.16, 'macro-asphalt')
+  if (!groundMat) groundMat = envMats().ground
+  if (!asphaltMat) asphaltMat = envMats().asphalt
   return { ground: groundMat, asphalt: asphaltMat }
 }
 
@@ -200,6 +206,9 @@ export function ResidentialKryss({ quality }: { quality: QualitySettings }) {
       const alongNS = Math.abs(x) === 13.5
       const back = alongNS ? { x: x + Math.sign(x) * 9, z } : { x, z: z + Math.sign(z) * 9 }
       t.push({ x: back.x + ((i * 37) % 5) - 2, z: back.z + ((i * 53) % 5) - 2, kind: i % 3 === 0 ? 'birch' : i % 3 === 1 ? 'oak' : 'spruce', s: 0.85 + ((i * 13) % 7) * 0.06, rot: i })
+      // second garden tree beside the house (denser, more lived-in gardens)
+      const side = alongNS ? { x: x + Math.sign(x) * 2, z: z + Math.sign(z) * 6.2 } : { x: x + Math.sign(x) * 6.2, z: z + Math.sign(z) * 2 }
+      t.push({ x: side.x, z: side.z, kind: i % 2 ? 'birch' : 'oak', s: 0.65 + ((i * 11) % 5) * 0.06, rot: i * 3 })
       // keep the NE sight triangle clear of trunks/crowns (the hedge alone hides the car — that is the lesson)
       const inSightTriangle = (px: number, pz: number) => px > 0 && pz > 0 && px < 22 && pz < 22
       if (i % 2 === 0) {
@@ -222,6 +231,50 @@ export function ResidentialKryss({ quality }: { quality: QualitySettings }) {
     return t
   }, [L, quality.foliage])
 
+  // garden storytelling: flower beds under the front windows, shrubs at the corners,
+  // trampolines / patio sets in some back gardens, low stone walls, cars on driveways
+  const garden = useMemo(() => {
+    const beds: Array<{ x: number; z: number; w: number; d: number; seed: number }> = []
+    const shrubs: Array<{ x: number; z: number; r: number; h: number; seed: number }> = []
+    const tramps: Array<{ x: number; z: number }> = []
+    const sets: Array<{ x: number; z: number; rot: number }> = []
+    const cars: Array<{ x: number; z: number; h: number; color: string; plate: string }> = []
+    const toWorld = (h: HouseSpec, lx: number, lz: number) => {
+      const r = h.rot ?? 0
+      return { x: h.x + Math.cos(r) * lx + Math.sin(r) * lz, z: h.z - Math.sin(r) * lx + Math.cos(r) * lz }
+    }
+    const carCols = ['#3c4a57', '#d9d4c7', '#7a2a26', '#2b2f36', '#5c6b75']
+    L.forEach((l, i) => {
+      const h = l.house
+      const w = h.w ?? 9
+      const d = h.d ?? 7
+      const alongX = Math.abs(Math.sin(h.rot ?? 0)) > 0.5
+      const fb = toWorld(h, -w * 0.28, d / 2 + 0.55)
+      beds.push({ x: fb.x, z: fb.z, w: alongX ? 0.9 : w * 0.34, d: alongX ? w * 0.34 : 0.9, seed: i })
+      for (const sx of [-1, 1]) {
+        const p = toWorld(h, sx * (w / 2 + 0.6), d / 2 + 0.3)
+        if (i % 3 !== 2) shrubs.push({ x: p.x, z: p.z, r: 0.55 + (i % 3) * 0.12, h: 0.8 + (i % 2) * 0.3, seed: i * 2 + sx })
+      }
+      const back = toWorld(h, (i % 2 ? 1 : -1) * w * 0.2, -d / 2 - 4.5)
+      if (i % 4 === 1) tramps.push(back)
+      else if (i % 4 === 3) sets.push({ ...back, rot: (h.rot ?? 0) + 0.4 })
+      if (i % 5 === 0 && quality.tier !== 'low' && cars.length < 4) {
+        const dr = l.drive
+        const deep = dr.w > dr.d
+        const sgn = Math.sign(h.x || 1)
+        const sgz = Math.sign(h.z || 1)
+        cars.push({
+          x: deep ? dr.x + sgn * 2.6 : dr.x,
+          z: deep ? dr.z : dr.z + sgz * 2.6,
+          h: deep ? (sgn > 0 ? Math.PI / 2 : -Math.PI / 2) : sgz > 0 ? 0 : Math.PI,
+          color: carCols[cars.length % carCols.length],
+          plate: `DR ${31200 + i * 17}`,
+        })
+      }
+    })
+    return { beds, shrubs, tramps, sets, cars }
+  }, [L, quality.tier])
+
   return (
     <group>
       <ForestHills inner={200} outer={640} />
@@ -238,6 +291,11 @@ export function ResidentialKryss({ quality }: { quality: QualitySettings }) {
           ) : null,
         )}
         {L.map((l, i) => (l.edge === 'fence' ? <PicketFence key={`f${i}`} x={l.edgeLine.x} z={l.edgeLine.z} length={l.edgeLine.len} axis={l.edgeLine.axis} /> : null))}
+        {garden.shrubs.map((sh, i) => (
+          <Shrub key={`s${i}`} {...sh} />
+        ))}
+        <StoneWall x={-(R + SW + 0.45)} z={-51.4} length={11} axis="z" />
+        <StoneWall x={R + SW + 0.45} z={-17.4} length={11} axis="z" />
         {BLOCKING_HEDGES.map((h, i) => (
           <Hedge key={`b${i}`} {...h} />
         ))}
@@ -264,6 +322,18 @@ export function ResidentialKryss({ quality }: { quality: QualitySettings }) {
       <RoadWear axis="x" at={0} from={R} to={EW} width={R * 2} />
       <RoadWear axis="x" at={0} from={-EW} to={-R} width={R * 2} />
       <Trees items={trees} castShadow={quality.shadows} />
+      <FlowerBeds items={garden.beds} />
+      {garden.tramps.map((t, i) => (
+        <Trampoline key={i} x={t.x} z={t.z} r={1.6 + (i % 2) * 0.4} />
+      ))}
+      {garden.sets.map((t, i) => (
+        <GardenSet key={i} {...t} />
+      ))}
+      {garden.cars.map((c, i) => (
+        <group key={i} position={[c.x, 0, c.z]} rotation-y={c.h}>
+          <Car get={() => ({ x: c.x, z: c.z, h: c.h, v: 0, a: 0, visible: true, indicator: null, pose: 'idle', face: null })} color={c.color} parked plate={c.plate} body={i % 2 ? 'estate' : 'hatch'} />
+        </group>
+      ))}
       {/* signage: 30-sone for the player's approach, street name at the corner */}
       <Sign x={R + 0.5} z={36} kind="fart30" />
       <StreetPlate x={-R - SW - 0.6} z={R + CR + 0.6} name="Bjørkeveien" />

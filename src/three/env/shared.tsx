@@ -8,7 +8,7 @@ let groundMat: THREE.MeshStandardMaterial | null = null
 let asphaltMat: THREE.MeshStandardMaterial | null = null
 let urbanMat: THREE.MeshStandardMaterial | null = null
 export function envMats() {
-  if (!groundMat) groundMat = withMacroVariation(surface('grass', { tile: 2.6, color: '#e2ead0' }).clone(), 0.02, 0.22, 'macro-grass')
+  if (!groundMat) groundMat = withMacroVariation(surface('grass', { tile: 2.6, color: '#d2deb8' }).clone(), 0.02, 0.3, 'macro-grass')
   if (!asphaltMat) asphaltMat = withMacroVariation(surface('asphalt').clone(), 0.03, 0.16, 'macro-asphalt')
   if (!urbanMat) urbanMat = withMacroVariation(surface('pavement', { tile: 2.4, color: '#bdb9b0' }).clone(), 0.025, 0.18, 'macro-pave')
   return { ground: groundMat, asphalt: asphaltMat, urbanPave: urbanMat }

@@ -277,6 +277,7 @@ export function hatchGeos(type: BodyType = 'hatch'): HatchGeos {
   trimParts.push(box(1.2, 0.12, 0.12, 0, 0.42, 2.16))
   trimParts.push(box(0.8, 0.09, 0.06, 0, 0.6, 2.19))
   trimParts.push(box(1.56, 0.14, 0.12, 0, 0.4, -2.14))
+  trimParts.push(box(0.9, 0.05, 0.03, 0, 0.965, -2.19)) // tailgate garnish between the lights
   for (const s of [-1, 1]) {
     trimParts.push(box(0.05, 0.08, 1.7, s * (hw + 0.005), 0.33, 0.02))
     // B-pillar (black, between the side windows) — tilted with the tumblehome
@@ -321,7 +322,12 @@ export function hatchGeos(type: BodyType = 'hatch'): HatchGeos {
     false,
   )!
   const brake = mergeGeometries(
-    [-1, 1].flatMap((s) => [stripToPN(box(0.34, 0.12, 0.05, s * 0.62, 0.93, -2.18, 0, s * 0.12, 0)), stripToPN(box(0.05, 0.12, 0.22, s * 0.86, 0.93, -2.0))]),
+    // slim wrap-around L-shaped tail lights (horizontal blade + vertical outer element + side wrap)
+    [-1, 1].flatMap((s) => [
+      stripToPN(box(0.3, 0.06, 0.05, s * 0.6, 0.96, -2.18, 0, s * 0.12, 0)),
+      stripToPN(box(0.07, 0.17, 0.05, s * 0.76, 0.91, -2.155, 0, s * 0.2, 0)),
+      stripToPN(box(0.04, 0.08, 0.2, s * 0.865, 0.94, -2.02)),
+    ]),
     false,
   )!
   // +x is the car's LEFT side (models.tsx convention)

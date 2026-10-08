@@ -421,6 +421,61 @@ export interface HouseSpec {
   chimney?: boolean
 }
 
+const CURTAINS = ['#efe9dc', '#e9e4da', '#d9cdb8', '#f2efe8', '#cdd6d9']
+const curtainCache = new Map<number, THREE.MeshStandardMaterial>()
+function curtainMat(i: number) {
+  let m = curtainCache.get(i)
+  if (!m) {
+    m = new THREE.MeshStandardMaterial({ color: CURTAINS[i], roughness: 0.95, emissive: CURTAINS[i], emissiveIntensity: 0.05 })
+    curtainCache.set(i, m)
+  }
+  return m
+}
+
+let numberTex: THREE.CanvasTexture | null = null
+let numberMat: THREE.MeshStandardMaterial | null = null
+/** 8×5 atlas of enamel house-number plates 1–40 (one texture for every house). */
+function houseNumberMat() {
+  if (!numberMat) {
+    const c = document.createElement('canvas')
+    c.width = 512
+    c.height = 320
+    const g = c.getContext('2d')!
+    for (let i = 0; i < 40; i++) {
+      const x = (i % 8) * 64
+      const y = Math.floor(i / 8) * 64
+      g.fillStyle = '#1f3f73'
+      g.fillRect(x + 2, y + 10, 60, 44)
+      g.strokeStyle = '#f2f2f2'
+      g.lineWidth = 3
+      g.strokeRect(x + 6, y + 14, 52, 36)
+      g.fillStyle = '#f7f7f2'
+      g.font = 'bold 28px Arial, sans-serif'
+      g.textAlign = 'center'
+      g.textBaseline = 'middle'
+      g.fillText(String(i + 1), x + 32, y + 33)
+    }
+    numberTex = new THREE.CanvasTexture(c)
+    numberTex.colorSpace = THREE.SRGBColorSpace
+    numberMat = new THREE.MeshStandardMaterial({ map: numberTex, roughness: 0.4, metalness: 0.1 })
+  }
+  return numberMat
+}
+function houseNumberGeo(n: number, x: number, y: number, z: number) {
+  const g = new THREE.PlaneGeometry(0.24, 0.17)
+  const i = n - 1
+  const px = (i % 8) * 64
+  const py = Math.floor(i / 8) * 64
+  const u0 = (px + 2) / 512
+  const u1 = (px + 62) / 512
+  const vTop = 1 - (py + 10) / 320
+  const vBot = 1 - (py + 54) / 320
+  const uv = g.attributes.uv as THREE.BufferAttribute
+  for (let k = 0; k < uv.count; k++) uv.setXY(k, u0 + uv.getX(k) * (u1 - u0), vBot + uv.getY(k) * (vTop - vBot))
+  g.translate(x, y, z)
+  return g
+}
+
 /** Norwegian detached timber house (enebolig). Built from shared materials so it batches. */
 export function NorHouse(spec: HouseSpec) {
   const { x, z, rot = 0, w = 9, d = 7, floors = 2, color, roof = 'dark', pitch = 34, seed = 1, porch = true, chimney = true } = spec
@@ -459,7 +514,13 @@ export function NorHouse(spec: HouseSpec) {
       make(new THREE.BoxGeometry(0.05, wh, 0.04).translate(0, 0, 0.02), trim)
       make(new THREE.BoxGeometry(ww, 0.05, 0.04).translate(0, wh * 0.18, 0.02), trim)
       make(new THREE.BoxGeometry(ww + 0.26, 0.05, 0.16).translate(0, -wh / 2 - 0.1, 0.07), trim)
-      make(new THREE.PlaneGeometry(ww, wh).translate(0, 0, 0.0), glassM)
+      make(new THREE.PlaneGeometry(ww, wh).translate(0, 0, 0.012), glassM)
+      // curtains: pale fabric at both sides of most windows → reads as lived-in from the street
+      if ((Math.round(cx * 7 + cy * 3) + seed) % 4 !== 0) {
+        const cm = curtainMat((Math.round(cx * 5) + seed) % CURTAINS.length)
+        make(new THREE.PlaneGeometry(ww * 0.22, wh * 0.9).translate(-ww * 0.37, -wh * 0.03, 0.009), cm)
+        make(new THREE.PlaneGeometry(ww * 0.22, wh * 0.9).translate(ww * 0.37, -wh * 0.03, 0.009), cm)
+      }
     }
     const perRow = Math.max(2, Math.round(w / 2.6))
     for (let f = 0; f < floors; f++) {
@@ -478,8 +539,19 @@ export function NorHouse(spec: HouseSpec) {
     out.push({ g: worldBox(dx, F + 1.05, d / 2 + 0.03, 1.0, 2.1, 0.06), m: paint(seed % 2 ? '#2f3a33' : '#5a3a2a', 0.5) })
     out.push({ g: worldBox(dx, F + 2.2, d / 2 + 0.06, 1.25, 0.1, 0.1), m: trim })
     if (porch) {
+      const conc = surface('concrete', { tile: 2 })
       out.push({ g: worldBox(dx, F + 2.55, d / 2 + 0.6, 1.9, 0.08, 1.2), m: trim })
-      out.push({ g: worldBox(dx, F / 2, d / 2 + 0.6, 1.8, F, 1.2), m: surface('concrete', { tile: 2 }) })
+      out.push({ g: worldBox(dx, F / 2, d / 2 + 0.6, 1.8, F, 1.2), m: conc })
+      // steps down to the garden path
+      const n = 3
+      for (let i = 0; i < n; i++) out.push({ g: worldBox(dx, (F / n) * (i + 0.5), d / 2 + 1.2 + (n - i) * 0.28 - 0.14, 1.3, (F / n) * (i + 1), 0.28), m: conc })
+      // porch posts + railing
+      for (const sx of [-1, 1]) {
+        out.push({ g: worldBox(dx + sx * 0.88, F + 1.27, d / 2 + 1.15, 0.1, 2.55, 0.1), m: trim })
+        out.push({ g: worldBox(dx + sx * 0.88, F + 0.9, d / 2 + 0.62, 0.05, 0.05, 1.0), m: trim })
+      }
+      // house number plate (shared atlas → merges)
+      out.push({ g: houseNumberGeo(((seed * 7) % 39) + 1, dx + 0.75, F + 1.8, d / 2 + 0.035), m: houseNumberMat(), cast: false })
     }
     // roof (gable, ridge along x)
     const th = THREE.MathUtils.degToRad(pitch)
@@ -679,3 +751,137 @@ export function ForestHills({ inner = 170, outer = 620, seed = 3 }: { inner?: nu
 }
 
 export { groundPlane, worldBox }
+
+/* ───────────── garden kit ───────────── */
+
+/** Rounded garden shrub (same hedge material → merges with hedges). */
+export function Shrub({ x, z, r = 0.7, h = 0.9, seed = 1 }: { x: number; z: number; r?: number; h?: number; seed?: number }) {
+  const geo = useMemo(() => {
+    const g = new THREE.SphereGeometry(1, 12, 9)
+    const p = g.attributes.position
+    const v = new THREE.Vector3()
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i)
+      const n = 1 + Math.sin(v.x * 4.1 + seed) * Math.cos(v.z * 3.7 + seed * 1.3) * 0.12 + Math.sin(v.y * 5.3 + seed) * 0.06
+      v.multiplyScalar(n)
+      if (v.y < -0.35) v.y = -0.35
+      p.setXYZ(i, v.x * r, (v.y + 0.35) * (h / 1.35), v.z * r)
+    }
+    g.computeVertexNormals()
+    g.translate(x, 0, z)
+    return boxUV(g)
+  }, [x, z, r, h, seed])
+  return <mesh geometry={geo} material={getHedgeMat()} castShadow receiveShadow />
+}
+
+/** Low dry-stone / granite retaining wall (gardens on Norwegian slopes). */
+export function StoneWall({ x, z, length, axis = 'x', h = 0.55 }: { x: number; z: number; length: number; axis?: 'x' | 'z'; h?: number }) {
+  const geo = useMemo(() => {
+    const parts: THREE.BufferGeometry[] = []
+    const n = Math.max(2, Math.round(length / 0.7))
+    for (let i = 0; i < n; i++) {
+      for (let row = 0; row < 2; row++) {
+        const off = row % 2 ? 0.35 : 0
+        const p = -length / 2 + ((i + 0.5) * length) / n + off * (i < n - 1 ? 1 : 0)
+        const bw = length / n - 0.04
+        const bh = h / 2 - 0.02
+        const g = new THREE.BoxGeometry(axis === 'x' ? bw : 0.45, bh, axis === 'x' ? 0.45 : bw)
+        g.translate(axis === 'x' ? x + p : x, bh / 2 + row * (h / 2), axis === 'x' ? z : z + p)
+        parts.push(g.toNonIndexed())
+      }
+    }
+    return boxUV(mergeGeometries(parts)!)
+  }, [x, z, length, axis, h])
+  return <mesh geometry={geo} material={surface('granite', { tile: 0.9, color: '#a7a49d' })} castShadow receiveShadow />
+}
+
+/** Garden trampoline — a very Norwegian garden detail. */
+export function Trampoline({ x, z, r = 1.8 }: { x: number; z: number; r?: number }) {
+  const g = useMemo(() => {
+    const frame: THREE.BufferGeometry[] = []
+    const ring = new THREE.TorusGeometry(r, 0.035, 6, 32)
+    ring.rotateX(Math.PI / 2)
+    ring.translate(0, 0.75, 0)
+    frame.push(ring.toNonIndexed())
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2
+      const leg = new THREE.CylinderGeometry(0.03, 0.03, 0.75, 6)
+      leg.translate(Math.cos(a) * r, 0.375, Math.sin(a) * r)
+      frame.push(leg.toNonIndexed())
+    }
+    const pad = new THREE.TorusGeometry(r, 0.09, 6, 32)
+    pad.rotateX(Math.PI / 2)
+    pad.translate(0, 0.79, 0)
+    const mat = new THREE.CircleGeometry(r - 0.08, 32)
+    mat.rotateX(-Math.PI / 2)
+    mat.translate(0, 0.74, 0)
+    return { frame: mergeGeometries(frame)!, pad, mat }
+  }, [r])
+  return (
+    <group position={[x, 0, z]}>
+      <mesh geometry={g.frame} material={metal('#8a9096', 0.4)} castShadow />
+      <mesh geometry={g.pad} material={plastic('#2f6fb2', 0.6)} castShadow />
+      <mesh geometry={g.mat} material={plastic('#151617', 0.85)} receiveShadow />
+    </group>
+  )
+}
+
+/** Patio table + two chairs (white painted). */
+export function GardenSet({ x, z, rot = 0 }: { x: number; z: number; rot?: number }) {
+  const g = useMemo(() => {
+    const p: THREE.BufferGeometry[] = []
+    const b = (w: number, h: number, d: number, px: number, py: number, pz: number) => p.push(new THREE.BoxGeometry(w, h, d).translate(px, py, pz).toNonIndexed())
+    b(0.9, 0.04, 0.9, 0, 0.72, 0)
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) b(0.04, 0.72, 0.04, sx * 0.4, 0.36, sz * 0.4)
+    for (const sx of [-1, 1]) {
+      b(0.45, 0.04, 0.45, sx * 0.85, 0.45, 0)
+      b(0.04, 0.45, 0.45, sx * 1.07, 0.7, 0)
+      for (const lx of [-1, 1]) for (const lz of [-1, 1]) b(0.03, 0.45, 0.03, sx * 0.85 + lx * 0.2, 0.22, lz * 0.2)
+    }
+    return mergeGeometries(p)!
+  }, [])
+  return <mesh geometry={g} material={paint('#ece9e1', 0.6)} position={[x, 0, z]} rotation-y={rot} castShadow receiveShadow />
+}
+
+/** All flower beds of a scene in ONE vertex-coloured mesh: soil strip + clustered blooms + leaves. */
+export function FlowerBeds({ items }: { items: Array<{ x: number; z: number; w: number; d: number; seed?: number }> }) {
+  const geo = useMemo(() => {
+    const parts: THREE.BufferGeometry[] = []
+    const col = (g: THREE.BufferGeometry, hex: string) => {
+      const ng = g.toNonIndexed()
+      const c = new THREE.Color(hex).convertSRGBToLinear()
+      const n = ng.attributes.position.count
+      const arr = new Float32Array(n * 3)
+      for (let i = 0; i < n; i++) arr.set([c.r, c.g, c.b], i * 3)
+      ng.setAttribute('color', new THREE.BufferAttribute(arr, 3))
+      ng.deleteAttribute('uv')
+      return ng
+    }
+    const blooms = ['#d8344f', '#f2c230', '#e86fa6', '#f4f1ea', '#8e5bc4', '#ef7d2e']
+    items.forEach((b, bi) => {
+      let s = (b.seed ?? bi) * 977 + 13
+      const r = () => ((s = (s * 16807) % 2147483647) & 0xffff) / 0xffff
+      const soil = new THREE.BoxGeometry(b.w, 0.06, b.d)
+      soil.translate(b.x, 0.03, b.z)
+      parts.push(col(soil, '#3b2c22'))
+      const n = Math.round(b.w * b.d * 9)
+      for (let i = 0; i < n; i++) {
+        const px = b.x + (r() - 0.5) * (b.w - 0.15)
+        const pz = b.z + (r() - 0.5) * (b.d - 0.15)
+        const leaf = new THREE.SphereGeometry(0.11 + r() * 0.08, 6, 4)
+        leaf.scale(1, 0.7, 1)
+        leaf.translate(px, 0.12, pz)
+        parts.push(col(leaf, r() < 0.5 ? '#3e6a33' : '#557b3f'))
+        if (r() < 0.7) {
+          const fl = new THREE.SphereGeometry(0.05 + r() * 0.035, 5, 4)
+          fl.translate(px + (r() - 0.5) * 0.08, 0.22 + r() * 0.1, pz + (r() - 0.5) * 0.08)
+          parts.push(col(fl, blooms[Math.floor(r() * blooms.length)]))
+        }
+      }
+    })
+    return parts.length ? mergeGeometries(parts)! : null
+  }, [items])
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }), [])
+  if (!geo) return null
+  return <mesh geometry={geo} material={mat} castShadow receiveShadow />
+}
