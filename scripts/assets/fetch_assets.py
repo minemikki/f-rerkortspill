@@ -21,6 +21,8 @@ TEX=[
  ("roof_tiles","roof_red",512,False),
  ("concrete","concrete",512,False),
  ("pine_bark","bark",512,False),
+ ("clay_plaster","plaster",512,True),
+ ("large_red_bricks","brick",512,False),
 ]
 manifest=[]
 for id,name,size,tint in TEX:

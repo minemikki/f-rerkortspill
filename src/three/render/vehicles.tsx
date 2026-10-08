@@ -105,12 +105,16 @@ function bodyProfile(): Array<[number, number]> {
 }
 
 /** Glasshouse outline (windows volume). */
-function glassProfile(): Array<[number, number]> {
+export type BodyType = 'hatch' | 'estate'
+
+function glassProfile(type: BodyType = 'hatch'): Array<[number, number]> {
+  // estate: the roof runs on to an almost vertical tailgate (longer glasshouse, same footprint)
+  const e = type === 'estate'
   return [
     [0.86, HATCH.belt - 0.02],
     [0.06, HATCH.roof - 0.04],
-    [-1.5, HATCH.roof - 0.02],
-    [-1.98, 1.1],
+    [e ? -1.86 : -1.5, HATCH.roof - (e ? 0.03 : 0.02)],
+    [e ? -2.06 : -1.98, e ? 1.14 : 1.1],
     [-2.04, HATCH.belt - 0.02],
   ]
 }
@@ -175,9 +179,11 @@ export interface HatchGeos {
   rim: THREE.BufferGeometry
 }
 
-let geos: HatchGeos | null = null
-export function hatchGeos(): HatchGeos {
-  if (geos) return geos
+const geoByType = new Map<BodyType, HatchGeos>()
+export function hatchGeos(type: BodyType = 'hatch'): HatchGeos {
+  const cached = geoByType.get(type)
+  if (cached) return cached
+  const est = type === 'estate'
   const { W, belt, roof } = HATCH
   const hw = W / 2
 
@@ -204,7 +210,7 @@ export function hatchGeos(): HatchGeos {
   }
 
   // cabin (glasshouse volume) in body paint; windows are inset panels on top → real pillars
-  const cabin = taper(extrudeProfile(chaikin(glassProfile(), 1, new Set([0, 4])), W - 0.1, 0.05), belt, roof, 0.17)
+  const cabin = taper(extrudeProfile(chaikin(glassProfile(type), 1, new Set([0, 4])), W - 0.1, 0.05), belt, roof, 0.17)
   const cabinHalf = (y: number) => ((W - 0.1) / 2) * (1 - 0.17 * THREE.MathUtils.clamp((y - belt) / (roof - belt), 0, 1))
   const tilt = Math.atan(((W - 0.1) / 2) * 0.17 / (roof - belt))
   const glassParts: THREE.BufferGeometry[] = []
@@ -220,7 +226,9 @@ export function hatchGeos(): HatchGeos {
   }
   for (const s of [-1, 1]) {
     sideWindow([[0.74, belt + 0.085], [0.2, roof - 0.11], [-0.33, roof - 0.08], [-0.33, belt + 0.085]], s)
-    sideWindow([[-0.44, belt + 0.085], [-0.44, roof - 0.08], [-1.36, roof - 0.075], [-1.6, belt + 0.14], [-1.58, belt + 0.085]], s)
+    sideWindow([[-0.44, belt + 0.085], [-0.44, roof - 0.08], [est ? -1.3 : -1.36, roof - 0.075], [est ? -1.42 : -1.6, belt + (est ? 0.085 : 0.14)], [est ? -1.42 : -1.58, belt + 0.085]], s)
+    // estate: third side window behind the C-pillar
+    if (est) sideWindow([[-1.52, belt + 0.085], [-1.52, roof - 0.085], [-1.78, roof - 0.09], [-1.95, belt + 0.12], [-1.95, belt + 0.085]], s)
   }
   /** quad on a profile segment A→B (z,y), between t0..t1, pushed out along the segment normal */
   const screen = (A: [number, number], B: [number, number], t0: number, t1: number, inset: number) => {
@@ -252,7 +260,7 @@ export function hatchGeos(): HatchGeos {
     }
     glassParts.push(g)
   }
-  const gp = glassProfile()
+  const gp = glassProfile(type)
   screen(gp[0], gp[1], 0.12, 0.78, 0.07) // windscreen
   screen(gp[2], gp[3], 0.22, 0.8, 0.09) // tailgate window
 
@@ -295,7 +303,7 @@ export function hatchGeos(): HatchGeos {
   // windscreen wipers + cowl
   trimParts.push(box(1.35, 0.03, 0.12, 0, belt + 0.08, 0.78, -0.5))
   // rear spoiler lip
-  trimParts.push(box(1.3, 0.04, 0.16, 0, roof + 0.0, -1.6, 0.25))
+  trimParts.push(box(1.3, 0.04, 0.16, 0, roof + 0.0, est ? -1.92 : -1.6, 0.25))
 
   // mirror housings in body colour → go into "body" merge below
   const mirrors: THREE.BufferGeometry[] = []
@@ -374,7 +382,7 @@ export function hatchGeos(): HatchGeos {
   rimParts.push(disc)
   const rim = mergeGeometries(rimParts.map(stripToPN), false)!
 
-  geos = {
+  const geos: HatchGeos = {
     body: mergeGeometries([stripToPN(bodyAll), stripToPN(cabin)], false)!,
     glass: mergeGeometries(glassParts.map(stripToPN), false)!,
     cabin,
@@ -388,6 +396,7 @@ export function hatchGeos(): HatchGeos {
     tyre,
     rim,
   }
+  geoByType.set(type, geos)
   return geos
 }
 
@@ -508,4 +517,291 @@ export function plateFor(id: string) {
   const b = L[(h >> 5) % L.length]
   const n = 10000 + ((h >> 9) % 89999)
   return `${a}${b} ${n}`
+}
+
+/* ───────────── van + city bus (same construction, same materials) ───────────── */
+
+export interface BoxVehicleGeos {
+  body: THREE.BufferGeometry
+  glass: THREE.BufferGeometry
+  trim: THREE.BufferGeometry
+  head: THREE.BufferGeometry
+  brake: THREE.BufferGeometry
+  indL: THREE.BufferGeometry
+  indR: THREE.BufferGeometry
+  plates: THREE.BufferGeometry
+  /** wheel centres (x, z) and radius */
+  wheels: Array<[number, number]>
+  wheelR: number
+  /** optional emissive destination sign (bus) */
+  sign?: THREE.BufferGeometry
+}
+
+function archPts(cz: number, cy: number, r: number, n = 14): Array<[number, number]> {
+  const out: Array<[number, number]> = []
+  for (let i = 0; i <= n; i++) {
+    const a = Math.PI - (Math.PI * i) / n
+    out.push([cz + Math.cos(a) * r, cy + Math.sin(a) * r])
+  }
+  return out
+}
+
+function bx(w: number, h: number, d: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) {
+  const g = new THREE.BoxGeometry(w, h, d)
+  g.rotateX(rx)
+  g.rotateY(ry)
+  g.rotateZ(rz)
+  g.translate(x, y, z)
+  return stripToPN(g)
+}
+
+/** flat polygon window on a vehicle side (x = ±xs), poly in (z, y) */
+function sidePane(poly: Array<[number, number]>, xs: number) {
+  const s = Math.sign(xs)
+  const sh = new THREE.Shape(poly.map(([z, y]) => new THREE.Vector2(s > 0 ? -z : z, y)))
+  const g = new THREE.ShapeGeometry(sh)
+  g.rotateY(s > 0 ? Math.PI / 2 : -Math.PI / 2)
+  g.translate(xs, 0, 0)
+  return stripToPN(g)
+}
+
+/** vertical pane facing ±z */
+function endPane(w: number, y0: number, y1: number, z: number, facing: 1 | -1, lean = 0) {
+  const g = new THREE.PlaneGeometry(w, y1 - y0)
+  if (lean) g.rotateX(-lean)
+  if (facing < 0) g.rotateY(Math.PI)
+  g.translate(0, (y0 + y1) / 2, z)
+  return stripToPN(g)
+}
+
+function linersFor(axles: number[], hw: number, r: number, cy: number) {
+  const out: THREE.BufferGeometry[] = []
+  for (const s of [-1, 1])
+    for (const az of axles) {
+      const liner = new THREE.CylinderGeometry(r, r, 0.34, 18, 1, true, -Math.PI / 2, Math.PI)
+      liner.rotateZ(-Math.PI / 2)
+      liner.rotateX(-Math.PI / 2)
+      liner.translate(s * (hw - 0.22), cy, az)
+      out.push(stripToPN(liner))
+    }
+  return out
+}
+
+let vanCache: BoxVehicleGeos | null = null
+/** Transit-class panel van, 5.4 × 2.02 × 2.45 m. Local +z forward, +x = left side. */
+export function vanGeos(): BoxVehicleGeos {
+  if (vanCache) return vanCache
+  const W = 2.02
+  const hw = W / 2
+  const R = 0.36
+  const FA = 1.72
+  const RA = -1.72
+  const AR = 0.5
+  const prof: Array<[number, number]> = [
+    [-2.62, 0.42],
+    [RA - AR - 0.02, 0.36],
+    ...archPts(RA, 0.4, AR),
+    [FA - AR - 0.02, 0.36],
+    ...archPts(FA, 0.4, AR),
+    [2.5, 0.36],
+    [2.62, 0.48],
+    [2.66, 0.72],
+    [2.6, 0.97],
+    [2.25, 1.13],
+    [1.85, 1.23],
+    [1.1, 2.3],
+    [0.9, 2.42],
+    [-2.5, 2.44],
+    [-2.64, 2.3],
+    [-2.66, 0.6],
+  ]
+  const keep = new Set<number>()
+  prof.forEach((p, i) => p[1] < 0.95 && Math.min(Math.abs(p[0] - FA), Math.abs(p[0] - RA)) < AR + 0.05 && keep.add(i))
+  const body = extrudeProfile(chaikin(prof, 2, keep), W, 0.1)
+  const glass: THREE.BufferGeometry[] = []
+  // windscreen on the (1.85,1.23)–(1.1,2.3) segment, pushed out along its normal
+  {
+    const A = [1.85, 1.23]
+    const Bp = [1.1, 2.3]
+    const dz = Bp[0] - A[0]
+    const dy = Bp[1] - A[1]
+    const L = Math.hypot(dz, dy)
+    const nz = dy / L
+    const ny = -dz / L
+    const p0 = [A[0] + dz * 0.1 + nz * 0.085, A[1] + dy * 0.1 + ny * 0.085]
+    const p1 = [A[0] + dz * 0.86 + nz * 0.085, A[1] + dy * 0.86 + ny * 0.085]
+    const h = hw - 0.11
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute([-h, p0[1], p0[0], h, p0[1], p0[0], h, p1[1], p1[0], -h, p0[1], p0[0], h, p1[1], p1[0], -h, p1[1], p1[0]], 3))
+    g.computeVertexNormals()
+    if (g.attributes.normal.getZ(0) < 0) g.scale(-1, 1, 1)
+    g.computeVertexNormals()
+    glass.push(stripToPN(g))
+  }
+  for (const s of [-1, 1]) glass.push(sidePane([[1.72, 1.4], [1.22, 2.16], [0.38, 2.16], [0.38, 1.4]], s * (hw + 0.004)))
+  // rear door windows
+  for (const s of [-1, 1]) {
+    const g = endPane(0.78, 1.55, 2.15, -2.745, -1)
+    g.translate(s * 0.47, 0, 0)
+    glass.push(g)
+  }
+  const trim: THREE.BufferGeometry[] = [
+    bx(1.98, 0.3, 0.14, 0, 0.52, 2.71),
+    bx(1.25, 0.3, 0.05, 0, 0.84, 2.71, 0.25),
+    bx(2.0, 0.22, 0.14, 0, 0.5, -2.72),
+    bx(0.02, 1.6, 0.012, 0, 1.35, -2.752), // rear door split
+    ...linersFor([FA, RA], hw, 0.44, 0.4),
+  ]
+  for (const s of [-1, 1]) {
+    trim.push(bx(0.03, 0.12, 4.4, s * (hw + 0.012), 0.82, -0.1)) // rub strip
+    trim.push(bx(0.05, 0.1, 1.9, s * (hw + 0.006), 0.36, 0)) // sill
+    for (const z of [1.7, 0.33]) trim.push(bx(0.012, 1.85, 0.008, s * (hw + 0.012), 1.32, z)) // cab door seams
+    trim.push(bx(0.02, 0.04, 0.18, s * (hw + 0.014), 1.18, 0.62)) // handle
+    trim.push(bx(0.06, 0.32, 0.18, s * (hw + 0.16), 1.72, 1.32)) // big mirror
+    trim.push(bx(0.16, 0.04, 0.05, s * (hw + 0.06), 1.62, 1.36))
+    trim.push(bx(0.025, 0.035, 0.85, s * (hw + 0.005), 2.18, 0.8)) // window frame top
+  }
+  trim.push(bx(0.012, 1.85, 0.008, -(hw + 0.012), 1.32, -1.15)) // sliding door rear seam (right side)
+  trim.push(bx(0.03, 0.04, 2.4, -(hw + 0.02), 2.0, -0.4)) // sliding door rail
+  const lights = (fn: (s: number) => THREE.BufferGeometry[]) => mergeGeometries([-1, 1].flatMap(fn), false)!
+  const head = lights((s) => [bx(0.42, 0.2, 0.06, s * 0.7, 1.0, 2.64, 0, s * -0.25, 0)])
+  const brake = lights((s) => [bx(0.13, 0.5, 0.05, s * 0.93, 1.02, -2.75)])
+  const ind = (s: number) =>
+    mergeGeometries([bx(0.14, 0.09, 0.06, s * 0.94, 0.98, 2.56, 0, s * -0.6, 0), bx(0.13, 0.12, 0.05, s * 0.93, 1.38, -2.75), bx(0.03, 0.03, 0.09, s * (hw + 0.2), 1.6, 1.32)], false)!
+  const plates = mergeGeometries([stripToPN(planeUV(0.52, 0.11, 0, 0.52, 2.79, 0)), stripToPN(planeUV(0.52, 0.11, 0, 0.66, -2.79, Math.PI))], true)!
+  vanCache = {
+    body: stripToPN(body),
+    glass: mergeGeometries(glass, false)!,
+    trim: mergeGeometries(trim, false)!,
+    head,
+    brake,
+    indL: ind(1),
+    indR: ind(-1),
+    plates,
+    wheels: [
+      [0.87, FA],
+      [-0.87, FA],
+      [0.87, RA],
+      [-0.87, RA],
+    ],
+    wheelR: R,
+  }
+  return vanCache
+}
+
+let busCache: BoxVehicleGeos | null = null
+/** 12 m low-entry city bus (Norwegian city-bus proportions), doors on the right (−x) side. */
+export function busGeos(): BoxVehicleGeos {
+  if (busCache) return busCache
+  const W = 2.55
+  const hw = W / 2
+  const R = 0.5
+  const FA = 3.45
+  const RA = -2.45
+  const AR = 0.66
+  const prof: Array<[number, number]> = [
+    [-5.95, 0.4],
+    [RA - AR - 0.02, 0.34],
+    ...archPts(RA, 0.5, AR),
+    [FA - AR - 0.02, 0.34],
+    ...archPts(FA, 0.5, AR),
+    [5.86, 0.34],
+    [5.98, 0.46],
+    [6.02, 0.95],
+    [5.99, 2.92],
+    [5.86, 3.1],
+    [-5.86, 3.12],
+    [-5.99, 2.95],
+    [-6.0, 0.52],
+  ]
+  const keep = new Set<number>()
+  prof.forEach((p, i) => p[1] < 1.2 && Math.min(Math.abs(p[0] - FA), Math.abs(p[0] - RA)) < AR + 0.05 && keep.add(i))
+  const body = extrudeProfile(chaikin(prof, 1, keep), W, 0.12)
+  const glass: THREE.BufferGeometry[] = [endPane(W - 0.3, 1.0, 2.72, 6.115, 1, 0.04), endPane(1.6, 2.05, 2.75, -6.1, -1)]
+  const xs = hw + 0.004
+  // left side (+x): continuous window band
+  glass.push(sidePane([[5.35, 1.32], [5.35, 2.74], [-5.45, 2.74], [-5.45, 1.32]], xs))
+  // right side (−x): band interrupted by front + middle doors; doors are full-height glass
+  const doors: Array<[number, number]> = [
+    [4.55, 1.25],
+    [0.35, 1.3],
+  ]
+  const segs: Array<[number, number]> = [
+    [5.35, doors[0][0] + doors[0][1] / 2 + 0.08],
+    [doors[0][0] - doors[0][1] / 2 - 0.08, doors[1][0] + doors[1][1] / 2 + 0.08],
+    [doors[1][0] - doors[1][1] / 2 - 0.08, -5.45],
+  ]
+  for (const [a, b] of segs) glass.push(sidePane([[a, 1.32], [a, 2.74], [b, 2.74], [b, 1.32]], -xs))
+  for (const [z, w] of doors) {
+    glass.push(sidePane([[z + w / 2 - 0.05, 0.42], [z + w / 2 - 0.05, 2.7], [z + 0.02, 2.7], [z + 0.02, 0.42]], -(xs + 0.002)))
+    glass.push(sidePane([[z - 0.02, 0.42], [z - 0.02, 2.7], [z - w / 2 + 0.05, 2.7], [z - w / 2 + 0.05, 0.42]], -(xs + 0.002)))
+  }
+  const trim: THREE.BufferGeometry[] = [
+    bx(W - 0.1, 0.32, 0.16, 0, 0.5, 6.06),
+    bx(W - 0.1, 0.32, 0.16, 0, 0.52, -6.06),
+    bx(W - 0.3, 0.26, 0.05, 0, 2.86, 6.11), // destination display housing
+    bx(1.6, 0.34, 2.4, 0, 3.32, -1.6), // roof AC unit
+    bx(1.2, 0.24, 1.6, 0, 3.28, 2.6),
+    ...linersFor([FA, RA], hw, 0.6, 0.5),
+  ]
+  for (const s of [-1, 1]) {
+    trim.push(bx(0.03, 0.42, 11.4, s * (hw + 0.008), 0.6, 0)) // dark skirt
+    trim.push(bx(0.025, 0.05, 11.0, s * (hw + 0.006), 1.3, 0)) // window frame bottom
+    trim.push(bx(0.025, 0.05, 11.0, s * (hw + 0.006), 2.76, 0)) // window frame top
+    for (let z = 4.0; z > -5.4; z -= 1.55) if (s > 0 || Math.min(...doors.map(([dz, dw]) => Math.abs(z - dz) - dw / 2)) > 0.12) trim.push(bx(0.03, 1.44, 0.07, s * (hw + 0.008), 2.03, z)) // pillars
+    trim.push(bx(0.06, 0.05, 0.6, s * (hw + 0.28), 2.45, 5.75)) // mirror arm
+    trim.push(bx(0.06, 0.42, 0.22, s * (hw + 0.55), 2.2, 5.85)) // mirror
+  }
+  for (const [z] of doors) trim.push(bx(0.03, 2.32, 0.05, -(hw + 0.01), 1.56, z)) // door centre seal
+  for (const [z, w] of doors) {
+    trim.push(bx(0.035, 0.06, w, -(hw + 0.01), 2.72, z))
+    trim.push(bx(0.035, 2.3, 0.05, -(hw + 0.01), 1.56, z + w / 2))
+    trim.push(bx(0.035, 2.3, 0.05, -(hw + 0.01), 1.56, z - w / 2))
+  }
+  const lights = (fn: (s: number) => THREE.BufferGeometry[]) => mergeGeometries([-1, 1].flatMap(fn), false)!
+  const head = lights((s) => [bx(0.42, 0.16, 0.05, s * 0.88, 0.82, 6.07)])
+  const brake = lights((s) => [bx(0.2, 0.55, 0.05, s * 1.05, 1.05, -6.08), bx(0.25, 0.08, 0.05, s * 0.9, 3.0, -6.04)])
+  const ind = (s: number) => mergeGeometries([bx(0.18, 0.12, 0.05, s * 1.08, 0.82, 6.07), bx(0.2, 0.16, 0.05, s * 1.05, 1.5, -6.08), bx(0.04, 0.08, 0.3, s * (hw + 0.012), 0.95, 4.9)], false)!
+  const plates = mergeGeometries([stripToPN(planeUV(0.52, 0.11, 0, 0.5, 6.15, 0)), stripToPN(planeUV(0.52, 0.11, 0, 0.6, -6.15, Math.PI))], true)!
+  const sign = planeUV(W - 0.42, 0.18, 0, 2.86, 6.14, 0)
+  busCache = {
+    body: stripToPN(body),
+    glass: mergeGeometries(glass, false)!,
+    trim: mergeGeometries(trim, false)!,
+    head,
+    brake,
+    indL: ind(1),
+    indR: ind(-1),
+    plates,
+    wheels: [
+      [1.05, FA],
+      [-1.05, FA],
+      [1.05, RA],
+      [-1.05, RA],
+    ],
+    wheelR: R,
+    sign,
+  }
+  return busCache
+}
+
+let signTex: THREE.CanvasTexture | null = null
+/** LED destination display: route number + destination (fictional route). */
+export function destinationTexture() {
+  if (signTex) return signTex
+  const c = document.createElement('canvas')
+  c.width = 512
+  c.height = 48
+  const g = c.getContext('2d')!
+  g.fillStyle = '#0b0b0a'
+  g.fillRect(0, 0, 512, 48)
+  g.fillStyle = '#ffb21e'
+  g.font = 'bold 34px "Arial Narrow", Arial, sans-serif'
+  g.textBaseline = 'middle'
+  g.fillText('31', 14, 26)
+  g.font = 'bold 30px "Arial Narrow", Arial, sans-serif'
+  g.fillText('Sentrum via Torget', 78, 26)
+  signTex = new THREE.CanvasTexture(c)
+  signTex.colorSpace = THREE.SRGBColorSpace
+  return signTex
 }

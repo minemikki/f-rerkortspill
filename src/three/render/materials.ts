@@ -24,6 +24,8 @@ export type SurfaceId =
   | 'roof_red'
   | 'concrete'
   | 'bark'
+  | 'plaster'
+  | 'brick'
 
 const BASE = `${import.meta.env.BASE_URL ?? '/'}assets/tex/`
 const loader = new THREE.TextureLoader()
@@ -73,6 +75,8 @@ const DEFAULTS: Record<SurfaceId, SurfaceOpts> = {
   roof_red: { tile: 2.4, color: '#c9876b', normalScale: 1 },
   concrete: { tile: 2.2, color: '#c8c5be', normalScale: 0.6 },
   bark: { tile: 1, color: '#bba48c', normalScale: 1 },
+  plaster: { tile: 3, color: '#ffffff', normalScale: 0.5 },
+  brick: { tile: 1.6, color: '#ffffff', normalScale: 1 },
 }
 
 const matCache = new Map<string, THREE.MeshStandardMaterial>()

@@ -117,11 +117,11 @@ export function ActorNode({
   let hit: [number, number, number] = [1.4, 2.2, 1.4]
   switch (d.kind) {
     case 'car':
-      model = <Car get={get} color={color} parked={d.parked} plate={plateFor(d.id)} />
+      model = <Car get={get} color={color} parked={d.parked} plate={plateFor(d.id)} body={d.id === 'player' || plateFor(d.id).charCodeAt(1) % 3 ? 'hatch' : 'estate'} />
       hit = [2.6, 2.2, 5.0]
       break
     case 'van':
-      model = <Van get={get} color={color} parked={d.parked} />
+      model = <Van get={get} color={color} parked={d.parked} plate={plateFor(d.id)} />
       hit = [2.8, 3, 6]
       break
     case 'bus':

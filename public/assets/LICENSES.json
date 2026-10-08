@@ -92,5 +92,19 @@
     "name": "spruce_frond, birch_bark",
     "source": "Procedurally generated in-house",
     "license": "Project-owned"
+  },
+  {
+    "name": "plaster",
+    "source": "Poly Haven",
+    "asset": "clay_plaster (desaturated, tintable)",
+    "url": "https://polyhaven.com/a/clay_plaster",
+    "license": "CC0 1.0"
+  },
+  {
+    "name": "brick",
+    "source": "Poly Haven",
+    "asset": "large_red_bricks",
+    "url": "https://polyhaven.com/a/large_red_bricks",
+    "license": "CC0 1.0"
   }
 ]
