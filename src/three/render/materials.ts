@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js'
 
 /**
  * PBR material library.
@@ -10,7 +11,10 @@ import * as THREE from 'three'
  * collapse whole environments into a handful of draw calls.
  *
  * Textures: Poly Haven CC0 (see public/assets/LICENSES.json), downscaled
- * to 512–1024 px JPG. Next step for production: KTX2/Basis compression.
+ * to 512–1024 px. Shipped twice: JPG/PNG (fallback) and KTX2 / Basis ETC1S
+ * with mipmaps (public/assets/ktx2, built by scripts/assets/build_ktx2.sh),
+ * which stay block-compressed on the GPU (BC1/BC3, ETC2 or ASTC) — about
+ * 1/8 of the VRAM of decoded RGBA8. `?ktx2=0` forces the JPG path for A/B.
  */
 
 export type SurfaceId =
@@ -27,17 +31,81 @@ export type SurfaceId =
   | 'plaster'
   | 'brick'
 
-const BASE = `${import.meta.env.BASE_URL ?? '/'}assets/tex/`
+const ROOT = import.meta.env.BASE_URL ?? '/'
+const BASE = `${ROOT}assets/tex/`
+const KTX2_BASE = `${ROOT}assets/ktx2/`
 const loader = new THREE.TextureLoader()
 const texCache = new Map<string, THREE.Texture>()
 let anisotropy = 8
+let ktx2: KTX2Loader | null = null
+
+function ktx2Disabled() {
+  try {
+    return new URLSearchParams(location.search || location.hash.split('?')[1] || '').get('ktx2') === '0'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Switch texture loading to KTX2. Must run before materials are created
+ * (BenchmarkWorld calls it synchronously during render, ahead of its
+ * children). Textures already cached keep their JPG source.
+ */
+export function enableKTX2(gl: THREE.WebGLRenderer) {
+  if (ktx2 || ktx2Disabled()) return
+  try {
+    ktx2 = new KTX2Loader().setTranscoderPath(`${ROOT}basis/`).detectSupport(gl)
+  } catch {
+    ktx2 = null
+  }
+}
+
+export function textureStats() {
+  let compressed = 0
+  let bytes = 0
+  texCache.forEach((t) => {
+    const ct = t as THREE.CompressedTexture
+    if (ct.isCompressedTexture && ct.mipmaps?.length) {
+      compressed++
+      for (const m of ct.mipmaps) bytes += (m as { data: ArrayBufferView }).data.byteLength
+    } else {
+      const img = t.image as { width?: number; height?: number } | null
+      if (img?.width && img.height) bytes += img.width * img.height * 4 * 1.333
+    }
+  })
+  return { count: texCache.size, compressed, mb: +(bytes / 1048576).toFixed(1) }
+}
+
+/** KTX2 path: a CompressedTexture shell that is filled in once the transcode finishes. */
+function loadKTX2(file: string, srgb: boolean): THREE.Texture {
+  const t = new THREE.CompressedTexture([], 0, 0)
+  t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace
+  ktx2!.load(
+    KTX2_BASE + file.replace(/\.(jpg|png)$/, '.ktx2'),
+    (c) => {
+      const src = c as THREE.CompressedTexture
+      t.mipmaps = src.mipmaps
+      t.image = src.image
+      t.format = src.format
+      t.type = src.type
+      t.minFilter = src.mipmaps.length > 1 ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter
+      t.generateMipmaps = false
+      t.needsUpdate = true
+    },
+    undefined,
+    (e) => console.warn('[tex] KTX2 failed:', file, e),
+  )
+  return t
+}
 
 export function setTextureAnisotropy(a: number) {
   anisotropy = a
   texCache.forEach((t) => {
     if (t.anisotropy === a) return
     t.anisotropy = a
-    if (t.image) t.needsUpdate = true
+    const pending = (t as THREE.CompressedTexture).isCompressedTexture && !(t as THREE.CompressedTexture).mipmaps?.length
+    if (t.image && !pending) t.needsUpdate = true
   })
 }
 
@@ -45,7 +113,7 @@ export function loadTex(file: string, srgb: boolean, repeat = 1): THREE.Texture 
   const key = `${file}|${repeat}`
   let t = texCache.get(key)
   if (!t) {
-    t = loader.load(BASE + file)
+    t = ktx2 ? loadKTX2(file, srgb) : loader.load(BASE + file)
     t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace
     t.wrapS = t.wrapT = THREE.RepeatWrapping
     t.repeat.set(repeat, repeat)

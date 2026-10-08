@@ -517,7 +517,7 @@ export function NorHouse(spec: HouseSpec) {
       make(new THREE.PlaneGeometry(ww, wh).translate(0, 0, 0.012), glassM)
       // curtains: pale fabric at both sides of most windows → reads as lived-in from the street
       if ((Math.round(cx * 7 + cy * 3) + seed) % 4 !== 0) {
-        const cm = curtainMat((Math.round(cx * 5) + seed) % CURTAINS.length)
+        const cm = curtainMat((((Math.round(cx * 5) + seed) % CURTAINS.length) + CURTAINS.length) % CURTAINS.length)
         make(new THREE.PlaneGeometry(ww * 0.22, wh * 0.9).translate(-ww * 0.37, -wh * 0.03, 0.009), cm)
         make(new THREE.PlaneGeometry(ww * 0.22, wh * 0.9).translate(ww * 0.37, -wh * 0.03, 0.009), cm)
       }
@@ -864,16 +864,16 @@ export function FlowerBeds({ items }: { items: Array<{ x: number; z: number; w: 
       const soil = new THREE.BoxGeometry(b.w, 0.06, b.d)
       soil.translate(b.x, 0.03, b.z)
       parts.push(col(soil, '#3b2c22'))
-      const n = Math.round(b.w * b.d * 9)
+      const n = Math.round(b.w * b.d * 6)
       for (let i = 0; i < n; i++) {
         const px = b.x + (r() - 0.5) * (b.w - 0.15)
         const pz = b.z + (r() - 0.5) * (b.d - 0.15)
-        const leaf = new THREE.SphereGeometry(0.11 + r() * 0.08, 6, 4)
+        const leaf = new THREE.SphereGeometry(0.12 + r() * 0.09, 5, 3)
         leaf.scale(1, 0.7, 1)
         leaf.translate(px, 0.12, pz)
         parts.push(col(leaf, r() < 0.5 ? '#3e6a33' : '#557b3f'))
         if (r() < 0.7) {
-          const fl = new THREE.SphereGeometry(0.05 + r() * 0.035, 5, 4)
+          const fl = new THREE.SphereGeometry(0.05 + r() * 0.035, 4, 2)
           fl.translate(px + (r() - 0.5) * 0.08, 0.22 + r() * 0.1, pz + (r() - 0.5) * 0.08)
           parts.push(col(fl, blooms[Math.floor(r() * blooms.length)]))
         }
@@ -883,5 +883,6 @@ export function FlowerBeds({ items }: { items: Array<{ x: number; z: number; w: 
   }, [items])
   const mat = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }), [])
   if (!geo) return null
-  return <mesh geometry={geo} material={mat} castShadow receiveShadow />
+  // knee-high clutter: receives shadows, never casts (it halved the shadow-pass triangle budget)
+  return <mesh geometry={geo} material={mat} receiveShadow />
 }

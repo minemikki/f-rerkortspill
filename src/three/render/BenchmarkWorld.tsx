@@ -8,7 +8,7 @@ import { ResidentialKryss } from '../env/ResidentialKryss'
 import { ResidentialStraight } from '../env/ResidentialStraight'
 import { Roundabout } from '../env/Roundabout'
 import { Atmosphere } from './Atmosphere'
-import { setTextureAnisotropy } from './materials'
+import { enableKTX2, setTextureAnisotropy } from './materials'
 import { PostFX } from './PostFX'
 import type { QualitySettings } from './quality'
 
@@ -25,6 +25,7 @@ export function isBenchmark(id: EnvironmentId) {
 
 export function BenchmarkWorld({ id, quality, focus }: { id: EnvironmentId; quality: QualitySettings; focus: React.MutableRefObject<THREE.Vector3> }) {
   const { gl } = useThree()
+  enableKTX2(gl) // synchronous: must precede the children's material creation
   useEffect(() => {
     const prev = gl.toneMapping
     gl.toneMapping = THREE.AgXToneMapping

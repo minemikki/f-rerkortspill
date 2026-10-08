@@ -258,7 +258,7 @@ export function ResidentialKryss({ quality }: { quality: QualitySettings }) {
       const back = toWorld(h, (i % 2 ? 1 : -1) * w * 0.2, -d / 2 - 4.5)
       if (i % 4 === 1) tramps.push(back)
       else if (i % 4 === 3) sets.push({ ...back, rot: (h.rot ?? 0) + 0.4 })
-      if (i % 5 === 0 && quality.tier !== 'low' && cars.length < 4) {
+      if (i % 5 === 0 && cars.length < (quality.tier === 'high' ? 3 : quality.tier === 'medium' ? 2 : 0)) {
         const dr = l.drive
         const deep = dr.w > dr.d
         const sgn = Math.sign(h.x || 1)
@@ -317,18 +317,19 @@ export function ResidentialKryss({ quality }: { quality: QualitySettings }) {
         <Manhole x={0.6} z={-16} />
         <Manhole x={-0.8} z={24} />
         <Manhole x={18} z={0.7} />
+        {/* static garden props merge with the rest (was ~40 extra calls incl. shadow pass) */}
+        {garden.tramps.map((t, i) => (
+          <Trampoline key={`t${i}`} x={t.x} z={t.z} r={1.6 + (i % 2) * 0.4} />
+        ))}
+        {garden.sets.map((t, i) => (
+          <GardenSet key={`g${i}`} {...t} />
+        ))}
       </MergeStatic>
       <RoadWear axis="z" at={0} from={NS.from} to={NS.to} width={R * 2} />
       <RoadWear axis="x" at={0} from={R} to={EW} width={R * 2} />
       <RoadWear axis="x" at={0} from={-EW} to={-R} width={R * 2} />
       <Trees items={trees} castShadow={quality.shadows} />
       <FlowerBeds items={garden.beds} />
-      {garden.tramps.map((t, i) => (
-        <Trampoline key={i} x={t.x} z={t.z} r={1.6 + (i % 2) * 0.4} />
-      ))}
-      {garden.sets.map((t, i) => (
-        <GardenSet key={i} {...t} />
-      ))}
       {garden.cars.map((c, i) => (
         <group key={i} position={[c.x, 0, c.z]} rotation-y={c.h}>
           <Car get={() => ({ x: c.x, z: c.z, h: c.h, v: 0, a: 0, visible: true, indicator: null, pose: 'idle', face: null })} color={c.color} parked plate={c.plate} body={i % 2 ? 'estate' : 'hatch'} />

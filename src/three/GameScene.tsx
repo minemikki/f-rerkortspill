@@ -9,6 +9,7 @@ import { Environment } from './environments'
 import { Ball, Bus, Car, Cyclist, Person, Van, type ViewGetter } from './models'
 import { MOODS, type Mood } from './moods'
 import { BenchmarkWorld, isBenchmark } from './render/BenchmarkWorld'
+import { textureStats } from './render/materials'
 import { plateFor } from './render/vehicles'
 import { forcedTier, initialTier, lowerTier, settingsFor, type QualityTier } from './render/quality'
 import { ringTexture } from './textures'
@@ -534,7 +535,7 @@ export function ScenarioCanvas({
             gl.info.autoReset = false
             gl.info.reset()
             gl.render(scene, camera)
-            const r = { calls: gl.info.render.calls, triangles: gl.info.render.triangles, textures: gl.info.memory.textures, geometries: gl.info.memory.geometries, programs: gl.info.programs?.length ?? 0, dpr: gl.getPixelRatio(), shadowMap: gl.shadowMap.enabled }
+            const r = { calls: gl.info.render.calls, triangles: gl.info.render.triangles, textures: gl.info.memory.textures, geometries: gl.info.memory.geometries, programs: gl.info.programs?.length ?? 0, dpr: gl.getPixelRatio(), shadowMap: gl.shadowMap.enabled, tex: textureStats() }
             gl.info.autoReset = prev
             return r
           }
