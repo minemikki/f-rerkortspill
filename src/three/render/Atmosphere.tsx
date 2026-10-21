@@ -4,6 +4,8 @@ import * as THREE from 'three'
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js'
 import type { QualitySettings } from './quality'
 
+const _fwd = new THREE.Vector3()
+
 /**
  * Physically-based daylight rig shared by every "benchmark" scene:
  *  - HDRI image-based lighting (Poly Haven, CC0) via PMREM → scene.environment
@@ -140,7 +142,7 @@ export function Atmosphere({
     if (!s) return
     // Centre the shadow frustum a little ahead of the camera, snapped to texels
     const f = focus.current
-    const fwd = new THREE.Vector3()
+    const fwd = _fwd
     camera.getWorldDirection(fwd)
     fwd.y = 0
     fwd.normalize()

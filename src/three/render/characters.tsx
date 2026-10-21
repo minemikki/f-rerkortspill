@@ -124,10 +124,10 @@ interface Proportions {
 function proportions(kind: BodyKind): Proportions {
   if (kind === 'child') {
     // ≈ 7–8 years, 1.22 m, ≈ 5.6 heads
-    return { H: 1.22, hip: 0.6, waist: 0.68, chest: 0.84, shoulder: 0.95, neck: 1.0, headC: 1.1, headR: [0.083, 0.1, 0.092], shoulderW: 0.13, hipW: 0.065, elbow: 0.77, wrist: 0.6, knee: 0.33, ankle: 0.055, girth: 0.72 }
+    return { H: 1.22, hip: 0.6, waist: 0.68, chest: 0.84, shoulder: 0.95, neck: 1.0, headC: 1.1, headR: [0.088, 0.104, 0.096], shoulderW: 0.14, hipW: 0.065, elbow: 0.77, wrist: 0.6, knee: 0.33, ankle: 0.055, girth: 0.72 }
   }
   // adult ≈ 1.76 m, 7.5 heads
-  return { H: 1.76, hip: 0.94, waist: 1.06, chest: 1.3, shoulder: 1.45, neck: 1.52, headC: 1.645, headR: [0.088, 0.112, 0.1], shoulderW: 0.185, hipW: 0.092, elbow: 1.16, wrist: 0.9, knee: 0.5, ankle: 0.08, girth: kind === 'jogger' ? 0.92 : 1 }
+  return { H: 1.76, hip: 0.94, waist: 1.06, chest: 1.3, shoulder: 1.45, neck: 1.52, headC: 1.645, headR: [0.094, 0.118, 0.105], shoulderW: 0.2, hipW: 0.092, elbow: 1.16, wrist: 0.9, knee: 0.5, ankle: 0.08, girth: kind === 'jogger' ? 0.92 : 1 }
 }
 
 /** bone head positions in character space (rest pose, facing +z) */
@@ -305,8 +305,8 @@ export function bodyGeometry(kind: BodyKind, o: Outfit, key: string) {
       [0.142 * k, p.waist],
       [0.158 * k, (p.waist + p.chest) / 2],
       [0.172 * k, p.chest],
-      [0.168 * k, p.shoulder - 0.06],
-      [0.15 * k, p.shoulder - 0.01],
+      [0.182 * k, p.shoulder - 0.06],
+      [0.17 * k, p.shoulder - 0.01],
       [0.085, p.shoulder + 0.03],
       [0.055, p.neck],
     ]
@@ -359,9 +359,9 @@ export function bodyGeometry(kind: BodyKind, o: Outfit, key: string) {
     const fa = P[`foreArm${side}` as BoneName]
     const wr = new THREE.Vector3(s * (p.shoulderW + 0.02), p.wrist, 0.02)
     const sleeve = o.shorts ? o.skin : o.top
-    parts.push({ g: chain(ua.clone().add(new THREE.Vector3(0, -0.01, 0)), fa, wr, [0.047 * k, 0.037 * k, 0.031 * k, 0.027 * k], [B[`upperArm${side}` as BoneName], B[`foreArm${side}` as BoneName], B.chest], o.shorts ? o.top : sleeve, o.shorts ? o.skin : undefined) })
+    parts.push({ g: chain(ua.clone().add(new THREE.Vector3(0, -0.01, 0)), fa, wr, [0.058 * k, 0.048 * k, 0.04 * k, 0.033 * k], [B[`upperArm${side}` as BoneName], B[`foreArm${side}` as BoneName], B.chest], o.shorts ? o.top : sleeve, o.shorts ? o.skin : undefined) })
     // hand
-    add(ellipsoid(wr.clone().add(new THREE.Vector3(0, -0.055, 0.005)), [0.021, 0.046, 0.03]), o.skin, `foreArm${side}` as BoneName)
+    add(ellipsoid(wr.clone().add(new THREE.Vector3(0, -0.055, 0.005)), [0.025, 0.05, 0.034]), o.skin, `foreArm${side}` as BoneName)
   }
 
   /* legs */
@@ -370,7 +370,7 @@ export function bodyGeometry(kind: BodyKind, o: Outfit, key: string) {
     const th = P[`thigh${side}` as BoneName]
     const kn = P[`shin${side}` as BoneName]
     const an = P[`foot${side}` as BoneName]
-    parts.push({ g: chain(th, kn, an.clone().add(new THREE.Vector3(0, 0.01, 0)), [0.077 * k, 0.052 * k, 0.045 * k, 0.036 * k], [B[`thigh${side}` as BoneName], B[`shin${side}` as BoneName], B.pelvis], o.bottom, o.shorts ? o.skin : undefined) })
+    parts.push({ g: chain(th, kn, an.clone().add(new THREE.Vector3(0, 0.01, 0)), [0.086 * k, 0.064 * k, 0.056 * k, 0.046 * k], [B[`thigh${side}` as BoneName], B[`shin${side}` as BoneName], B.pelvis], o.bottom, o.shorts ? o.skin : undefined) })
     // shoe: flattened ellipsoid forward of the ankle, sole at y≈0
     const shoe = ellipsoid(new THREE.Vector3(s * 0.002, an.y * 0.42, 0.045 * (p.H / 1.76)), [0.042 * (p.H / 1.76 + 0.15), an.y * 0.55, 0.112 * (p.H / 1.76)], 10, 7)
     const pos = shoe.attributes.position

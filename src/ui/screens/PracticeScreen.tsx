@@ -12,7 +12,7 @@ import { useNav } from '../../state/nav'
 import { Car, Person } from '../../three/models'
 import { BenchmarkWorld } from '../../three/render/BenchmarkWorld'
 import { initialTier, lowerTier, settingsFor, type QualityTier } from '../../three/render/quality'
-import { FrameGuard } from '../../three/GameScene'
+import { FrameGuard, ShaderWarmup } from '../../three/GameScene'
 import { IconArrow, IconClose, IconRetry } from '../components/Icons'
 
 /**
@@ -354,6 +354,7 @@ function PracticeCanvas({ session, paused }: { session: PracticeSession; paused:
       </Actor>
       <SessionDriver session={session} />
       <ChaseCam session={session} focus={focus} />
+      <ShaderWarmup tier={tier} />
       <FrameGuard repeat disabled={tier === 'low'} onSlow={() => setTier((t) => lowerTier(t))} />
     </Canvas>
   )

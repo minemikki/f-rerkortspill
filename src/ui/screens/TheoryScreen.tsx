@@ -104,7 +104,7 @@ export function TheoryScreen() {
               Start <IconArrow />
             </button>
             <p className="mt-6 text-[12px] leading-snug text-fog">
-              Spørsmålene er utkast og er ikke faglig godkjent ennå. Antall, tidsbruk og bestått-grense her er ikke de samme som på Statens vegvesens teoriprøve.
+              Øvingsspørsmål laget for spillet – ikke Statens vegvesens teoriprøve. Antall, tid og bestått-grense er annerledes enn på den ekte prøven.
             </p>
           </motion.div>
         )}

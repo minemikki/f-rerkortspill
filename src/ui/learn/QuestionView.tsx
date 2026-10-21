@@ -36,7 +36,6 @@ export function SourceLine({ sources }: { sources: SourceRef[] }) {
           <a href={s.url} target="_blank" rel="noreferrer" className="underline decoration-white/20 underline-offset-2 hover:text-snow">
             {s.section ? `${s.title.startsWith('Forskrift om kjørende') ? 'Trafikkreglene' : s.title} ${s.section}` : s.title}
           </a>
-          {s.confidence === 'uncertain' && <span className="text-signal"> (må verifiseres)</span>}
         </span>
       ))}
     </p>
@@ -78,10 +77,9 @@ export function QuestionView({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="eyebrow text-[10px] text-signal">{TYPE_LABEL[q.questionType]}</span>
-        <ReviewChip status={q.professionalReviewStatus} />
       </div>
       <h3 className={`font-extrabold leading-tight tracking-[-0.01em] ${compact ? 'text-[19px]' : 'text-[22px] sm:text-[24px]'}`}>{q.prompt}</h3>
-      {q.imageOrSceneReference && <SceneVisual scene={q.imageOrSceneReference} className={`mx-auto w-full ${compact ? 'max-w-[200px]' : 'max-w-[260px]'} overflow-hidden rounded-2xl`} />}
+      {q.imageOrSceneReference && <SceneVisual scene={q.imageOrSceneReference} hint={reveal} className={`mx-auto w-full ${compact ? 'max-w-[200px]' : 'max-w-[260px]'} overflow-hidden rounded-2xl`} />}
       {ordering && <p className="text-[13px] text-mist">Trykk i riktig rekkefølge. Trykk igjen for å angre.</p>}
       <div className="flex flex-col gap-2.5" role={ordering ? 'list' : 'radiogroup'}>
         {q.answerOptions.map((o) => {

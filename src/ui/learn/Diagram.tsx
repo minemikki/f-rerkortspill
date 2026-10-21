@@ -26,10 +26,11 @@ function Car({ x, y, rot, color, label }: { x: number; y: number; rot: number; c
   )
 }
 
-function Arrow({ d, color, dashed }: { d: string; color: string; dashed?: boolean }) {
+function Arrow({ d, color, dashed, neutral }: { d: string; color: string; dashed?: boolean; neutral?: boolean }) {
+  // neutral: every road user drawn the same way, so the sketch never shows who goes first
   return (
     <g>
-      <path d={d} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round" strokeDasharray={dashed ? '5 5' : undefined} markerEnd={`url(#ah-${color.slice(1)})`} />
+      <path d={d} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round" strokeDasharray={dashed || neutral ? '5 5' : undefined} markerEnd={`url(#ah-${color.slice(1)})`} />
     </g>
   )
 }
@@ -58,7 +59,12 @@ function Crossroads({ hedge }: { hedge?: 'br' | 'bl' }) {
   )
 }
 
-function DiagramSvg({ id, mirror }: { id: DiagramId; mirror?: boolean }) {
+/**
+ * `hint = false` hides everything that gives the answer away (labels such as
+ * «KJØRER FØRST», stop lines, solid-vs-dashed arrows). Questions show the
+ * neutral sketch until the answer is checked; rule cards show the full one.
+ */
+function DiagramSvg({ id, mirror, hint = true }: { id: DiagramId; mirror?: boolean; hint?: boolean }) {
   const body = (() => {
     switch (id) {
       case 'kryss-hoyre':
@@ -66,12 +72,14 @@ function DiagramSvg({ id, mirror }: { id: DiagramId; mirror?: boolean }) {
           <>
             <Crossroads hedge="br" />
             <Car x={112} y={165} rot={0} color={YOU} label="DEG" />
-            <Arrow d="M112 145 V128" color={YOU} dashed />
+            <Arrow neutral={!hint} d="M112 145 V128" color={YOU} dashed />
             <Car x={172} y={88} rot={-90} color={OTHER} />
-            <Arrow d="M152 88 H110" color={OTHER} />
+            <Arrow neutral={!hint} d="M152 88 H110" color={OTHER} />
+            {hint && (
             <text x={150} y={70} fontSize={10} fontWeight={800} fill={OTHER} textAnchor="middle">
               KJØRER FØRST
             </text>
+            )}
           </>
         )
       case 'kryss-venstre':
@@ -79,12 +87,14 @@ function DiagramSvg({ id, mirror }: { id: DiagramId; mirror?: boolean }) {
           <>
             <Crossroads />
             <Car x={112} y={165} rot={0} color={YOU} label="DEG" />
-            <Arrow d="M112 145 V95" color={YOU} />
+            <Arrow neutral={!hint} d="M112 145 V95" color={YOU} />
             <Car x={28} y={112} rot={90} color={OTHER} />
-            <Arrow d="M45 112 H62" color={OTHER} dashed />
+            <Arrow neutral={!hint} d="M45 112 H62" color={OTHER} dashed />
+            {hint && (
             <text x={40} y={145} fontSize={10} fontWeight={800} fill={OTHER} textAnchor="middle">
               VIKER
             </text>
+            )}
           </>
         )
       case 'kryss-forkjorsvei':
@@ -93,7 +103,7 @@ function DiagramSvg({ id, mirror }: { id: DiagramId; mirror?: boolean }) {
             <Crossroads />
             <rect x={75} y={0} width={50} height={200} fill="none" stroke={YOU} strokeWidth={2} strokeDasharray="2 6" />
             <Car x={112} y={165} rot={0} color={YOU} label="DEG" />
-            <Arrow d="M112 145 V60" color={YOU} />
+            <Arrow neutral={!hint} d="M112 145 V60" color={YOU} />
             <Car x={172} y={88} rot={-90} color={OTHER} />
           </>
         )
@@ -105,9 +115,9 @@ function DiagramSvg({ id, mirror }: { id: DiagramId; mirror?: boolean }) {
               <rect key={i} x={64 + i * 11} y={70} width={6} height={30} fill="#f4f1ea" opacity={0.9} />
             ))}
             <circle cx={95} cy={85} r={7} fill={PED} />
-            <Arrow d="M88 85 H66" color={PED} />
+            <Arrow neutral={!hint} d="M88 85 H66" color={PED} />
             <Car x={115} y={160} rot={0} color={YOU} label="DEG" />
-            <path d="M100 118 H130" stroke="#ff4a3d" strokeWidth={3} />
+            {hint && <path d="M100 118 H130" stroke="#ff4a3d" strokeWidth={3} />}
           </>
         )
       case 'sykkelfelt-hoyresving':
@@ -118,9 +128,9 @@ function DiagramSvg({ id, mirror }: { id: DiagramId; mirror?: boolean }) {
             <rect x={136} y={70} width={64} height={50} fill={ROAD} />
             <rect x={120} y={70} width={16} height={50} fill="#8f3a32" opacity={0.55} />
             <Car x={102} y={140} rot={0} color={YOU} label="DEG" />
-            <Arrow d="M102 122 Q102 95 150 95" color={YOU} dashed />
+            <Arrow neutral={!hint} d="M102 122 Q102 95 150 95" color={YOU} dashed />
             <circle cx={128} cy={175} r={6} fill={OTHER} />
-            <Arrow d="M128 165 V60" color={OTHER} />
+            <Arrow neutral={!hint} d="M128 165 V60" color={OTHER} />
           </>
         )
       case 'rundkjoring-utkjoring':
@@ -131,7 +141,7 @@ function DiagramSvg({ id, mirror }: { id: DiagramId; mirror?: boolean }) {
             <circle cx={100} cy={100} r={52} fill={ROAD} />
             <circle cx={100} cy={100} r={22} fill="#3f6b3a" />
             <Car x={62} y={100} rot={180} color={YOU} label="DEG" />
-            <Arrow d="M62 80 Q70 55 100 50 Q125 48 140 60 L160 90 H190" color={YOU} dashed />
+            <Arrow neutral={!hint} d="M62 80 Q70 55 100 50 Q125 48 140 60 L160 90 H190" color={YOU} dashed />
             <circle cx={70} cy={88} r={4} fill="#ffa020" />
           </>
         )
@@ -142,9 +152,9 @@ function DiagramSvg({ id, mirror }: { id: DiagramId; mirror?: boolean }) {
             <Car x={68} y={60} rot={0} color="#9aa5b1" />
             <Car x={68} y={115} rot={0} color="#9aa5b1" />
             <circle cx={88} cy={88} r={5} fill="#ff4a3d" />
-            <Arrow d="M80 88 H96" color="#ff4a3d" dashed />
+            <Arrow neutral={!hint} d="M80 88 H96" color="#ff4a3d" dashed />
             <circle cx={40} cy={88} r={7} fill={PED} />
-            <Arrow d="M48 88 H62" color={PED} dashed />
+            <Arrow neutral={!hint} d="M48 88 H62" color={PED} dashed />
             <Car x={120} y={165} rot={0} color={YOU} label="DEG" />
           </>
         )
@@ -154,12 +164,14 @@ function DiagramSvg({ id, mirror }: { id: DiagramId; mirror?: boolean }) {
             <rect x={0} y={60} width={200} height={50} fill={ROAD} />
             <rect x={70} y={110} width={50} height={90} fill="#3a424d" />
             <Car x={95} y={160} rot={0} color={YOU} label="DEG" />
-            <Arrow d="M95 140 V122" color={YOU} dashed />
+            <Arrow neutral={!hint} d="M95 140 V122" color={YOU} dashed />
             <Car x={30} y={97} rot={90} color={OTHER} />
             <Car x={170} y={73} rot={-90} color={OTHER} />
+            {hint && (
             <text x={160} y={150} fontSize={10} fontWeight={800} fill={YOU} textAnchor="middle">
               VIK FOR ALLE
             </text>
+            )}
           </>
         )
     }
@@ -252,7 +264,7 @@ export function SignSvg({ sign }: { sign: SignId }) {
   )
 }
 
-export function SceneVisual({ scene, className = '' }: { scene: SceneRef; className?: string }) {
+export function SceneVisual({ scene, className = '', hint = true }: { scene: SceneRef; className?: string; hint?: boolean }) {
   if (scene.kind === 'sign')
     return (
       <div className={`grid place-items-center rounded-2xl bg-[#161c24] p-5 ${className}`}>
@@ -264,7 +276,7 @@ export function SceneVisual({ scene, className = '' }: { scene: SceneRef; classN
   if (scene.kind === 'diagram')
     return (
       <div className={className}>
-        <DiagramSvg id={scene.diagram} mirror={scene.mirror} />
+        <DiagramSvg id={scene.diagram} mirror={scene.mirror} hint={hint} />
       </div>
     )
   // linked 3D scene: show the matching diagram until frame capture lands (see docs)
@@ -277,7 +289,7 @@ export function SceneVisual({ scene, className = '' }: { scene: SceneRef; classN
   }
   return (
     <div className={`relative ${className}`}>
-      <DiagramSvg id={fallback[scene.scenarioId] ?? 'kryss-hoyre'} />
+      <DiagramSvg id={fallback[scene.scenarioId] ?? 'kryss-hoyre'} hint={hint} />
       <span className="eyebrow absolute left-3 top-3 rounded-full bg-ink/70 px-2 py-1 text-[9px] text-signal">Fra scenarioet</span>
     </div>
   )

@@ -5,7 +5,7 @@ import { line } from '../engine/path'
 import { Sim } from '../engine/sim'
 import type { ActorDef, SpeedCmd } from '../engine/types'
 import { KRYSS } from '../scenarios/layouts'
-import { ActorNode, AnchorProjector, FrameGuard, labelHeight } from './GameScene'
+import { ActorNode, AnchorProjector, FrameGuard, ShaderWarmup, labelHeight } from './GameScene'
 import { BenchmarkWorld } from './render/BenchmarkWorld'
 import { initialTier, lowerTier, settingsFor, type QualityTier } from './render/quality'
 
@@ -106,6 +106,7 @@ export function HeroCanvas() {
           return { x: a.view.x, z: a.view.z, visible: a.view.visible && near, h: labelHeight(a.def.kind) }
         }}
       />
+      <ShaderWarmup tier={tier} />
       <FrameGuard repeat disabled={tier === 'low'} onSlow={() => setTier((t) => lowerTier(t))} />
     </Canvas>
   )

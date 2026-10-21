@@ -1,6 +1,7 @@
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { lazy, Suspense, useEffect } from 'react'
 import { useNav } from './state/nav'
+import { FpsMeter } from './ui/components/FpsMeter'
 import { Landing } from './ui/screens/Landing'
 import { MapScreen } from './ui/screens/MapScreen'
 import { PlayScreen } from './ui/screens/PlayScreen'
@@ -26,6 +27,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <Screens />
+      <FpsMeter />
     </MotionConfig>
   )
 }

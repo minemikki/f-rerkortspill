@@ -21,7 +21,6 @@ export function RulePanel({ scenarioId, compact = false }: { scenarioId: string;
         {!compact && (
           <div className="mt-3 space-y-1">
             <SourceLine sources={[card.source]} />
-            <p className="text-[11px] text-fog">Faglig innhold er et utkast og ikke godkjent av trafikklærer ennå.</p>
           </div>
         )}
       </div>

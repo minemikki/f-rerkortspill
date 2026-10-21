@@ -462,24 +462,62 @@ const REDUCED_MOTION = typeof window !== 'undefined' && window.matchMedia?.('(pr
 /** A forced quality (?hq / ?quality=…) disables automatic downgrades. */
 const FORCE_HQ = forcedTier() !== null
 
-/** Calls onSlow when the frame rate stays low. With `repeat`, keeps watching (stepping quality down tier by tier). */
+/**
+ * Calls onSlow when the frame rate stays low. With `repeat`, keeps watching
+ * (stepping quality down tier by tier). Ignores the first seconds (shader
+ * compiles, texture uploads) and needs two slow windows in a row, so a
+ * one-off hitch never triggers a mid-drive quality swap (which itself
+ * causes a freeze while the scene rebuilds).
+ */
 export function FrameGuard({ onSlow, repeat = false, disabled = false }: { onSlow: () => void; repeat?: boolean; disabled?: boolean }) {
-  const acc = useRef({ t: 0, n: 0, fired: FORCE_HQ })
+  const acc = useRef({ t: -4, n: 0, slow: 0, fired: FORCE_HQ })
   useFrame((_, dt) => {
     const a = acc.current
     if (a.fired || disabled) return
     a.t += dt
+    if (a.t < 0) return // warm-up
     a.n++
     if (a.t > 3) {
       const fps = a.n / a.t
-      if (fps < 34) {
+      a.slow = fps < 34 ? a.slow + 1 : 0
+      if (a.slow >= 2) {
         a.fired = !repeat
+        a.slow = 0
+        a.t = -3 // let the new tier settle before judging again
         onSlow()
-      }
-      a.t = 0
+      } else a.t = 0
       a.n = 0
     }
   })
+  return null
+}
+
+/**
+ * Compile every shader the scene needs before it is shown (async where the
+ * driver supports KHR_parallel_shader_compile), instead of hitching on the
+ * first frame a material becomes visible. Re-runs when the tier changes.
+ */
+export function ShaderWarmup({ tier }: { tier: string }) {
+  const { gl, scene, camera } = useThree()
+  useEffect(() => {
+    document.documentElement.dataset.kjorTier = tier // read by the ?fps meter
+  }, [tier])
+  useEffect(() => {
+    let cancelled = false
+    // two frames so lazily mounted environment pieces exist
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (cancelled) return
+        const r = gl as THREE.WebGLRenderer & { compileAsync?: (s: THREE.Object3D, c: THREE.Camera) => Promise<unknown> }
+        if (r.compileAsync) r.compileAsync(scene, camera).catch(() => {})
+        else gl.compile(scene, camera)
+      }),
+    )
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(id)
+    }
+  }, [gl, scene, camera, tier])
   return null
 }
 
@@ -583,6 +621,7 @@ export function ScenarioCanvas({
         }}
       />
       <RunnerDriver runner={runner} onSimEvents={onSimEvents} onUIEvents={onUIEvents} shake={shake} />
+      <ShaderWarmup tier={bench ? tier : lowPower ? 'low' : 'classic'} />
       {bench ? (
         <FrameGuard repeat disabled={tier === 'low'} onSlow={() => setTier((t) => lowerTier(t))} />
       ) : (
