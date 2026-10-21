@@ -113,7 +113,7 @@ function PracticeRun({ mode, onAgain }: { mode: Mode; onAgain: () => void }) {
           </button>
           <div className="min-w-0 flex-1">
             <div className="eyebrow text-[10px] text-signal">{mode === 'exam' ? 'Prøvekjøring · simulert' : 'Øvelseskjøring'}</div>
-            <div className="truncate text-[12px] font-semibold text-mist">Treningsvurdering – ikke en offisiell kjøreprøve</div>
+            <div className="line-clamp-2 text-[12px] font-semibold leading-tight text-mist">Treningsvurdering – ikke en offisiell kjøreprøve</div>
           </div>
           <button
             aria-pressed={voiceOn}

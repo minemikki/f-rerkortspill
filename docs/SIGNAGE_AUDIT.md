@@ -39,6 +39,7 @@ the scenario teaches.
 | 1012 | Kantlinje | White | S4, S5 |
 | 1022 | Vikelinje (triangles) | White | S3 side street, S5 entries |
 | 1024 | Gangfelt (zebra) | White | S4, S5 |
+| 1039 | Sykkelsymbol | White | S3 bike lanes |
 
 ## Open items for expert review
 
@@ -49,8 +50,8 @@ the scenario teaches.
    shape and size are in the vegoppmerking handbook. The triangle size is approximate.
 3. **Sign size and height** are simplified (0.75 m panel at 2.3 m). Real sizes depend on the
    speed limit and road class (handbook N300).
-4. **Bicycle symbol 1039** is not painted in the S3 bike lanes yet. The skillelinje and the red
-   surface carry the meaning for now. Add the symbol before any claim of being «correct».
+4. **Bicycle symbol 1039** is now painted in both S3 bike lanes (about every 24 m, and right after
+   the side-street mouth). Its proportions are approximate; check against the handbook.
 5. **S5 roundabout** has no sign 406 *Påbudt rundkjøring* and no fareskilt 126. Both are
    optional depending on the site. Confirm the minimal set an instructor expects.
 6. **Street-name plates** («Lerkeveien», «Kirkegata») are fictional names and not traffic signs.

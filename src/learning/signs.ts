@@ -28,6 +28,7 @@ export const SIGNS: SignEntry[] = [
   { no: '1012', name: 'Kantlinje', group: 'oppmerking', inWorld: true },
   { no: '1022', name: 'Vikelinje', group: 'oppmerking', inWorld: true },
   { no: '1024', name: 'Gangfelt', group: 'oppmerking', inWorld: true },
+  { no: '1039', name: 'Sykkelsymbol', group: 'oppmerking', inWorld: true },
 ]
 
 export const SIGN_BY_NO = new Map(SIGNS.map((s) => [s.no, s]))

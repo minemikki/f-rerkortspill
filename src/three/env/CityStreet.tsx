@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { BYGATE } from '../../scenarios/layouts'
 import { MergeStatic, Sign, StreetPlate } from '../kit'
 import { ParkedBike } from '../render/characters'
-import { BikeRack, Bench2, Bollard, BusShelter2, CityBlock, LitterBin, Planter, TreeGrate, bikeLaneMaterial, dashedMark, lineMark, markingMaterial, yieldTeeth, type BlockSpec } from '../render/citykit'
+import { BikeRack, Bench2, Bollard, BusShelter2, CityBlock, LitterBin, Planter, TreeGrate, bikeLaneMaterial, bikeSymbol, bikeSymbolMaterial, dashedMark, lineMark, markingMaterial, yieldTeeth, type BlockSpec } from '../render/citykit'
 import type { QualitySettings } from '../render/quality'
 import { cornerGeo, curbArcGeo, Drain, ForestHills, groundPlane, Manhole, RoadWear, StreetLight, UtilityCabinet } from '../render/streetkit'
 import { surface } from '../render/materials'
@@ -71,6 +71,13 @@ export function CityStreet({ quality }: { quality: QualitySettings }) {
       }
     }
     out.push({ g: dashedMark('x', 0, RH + 6, RH + SIDE_LEN, 3, 6, 0.12), m: yellow, cast: false })
+    // 1039 sykkelsymbol every ~24 m in both lanes (and right after the side-street mouth)
+    const sym = bikeSymbolMaterial()
+    for (let z = Z.from + 10; z < Z.to - 4; z += 24) {
+      if (Math.abs(z) > SH + 3) out.push({ g: bikeSymbol(RH - B / 2, z, 0), m: sym, cast: false })
+      out.push({ g: bikeSymbol(-(RH - B / 2), z + 12, Math.PI), m: sym, cast: false })
+    }
+    out.push({ g: bikeSymbol(RH - B / 2, -SH - 3.2, 0), m: sym, cast: false })
     // side-street traffic gives way to the main street: haitenner across its exit lane (z ∈ [−4, 0], heading −x)
     out.push({ g: yieldTeeth(RH + 0.9, -SH / 2, SH - 0.3, Math.PI / 2), m: white, cast: false })
     return out
@@ -169,6 +176,8 @@ export function CityStreet({ quality }: { quality: QualitySettings }) {
       <ParkedBike x={RH + SW - 0.55} z={-10.4} rot={Math.PI / 2 + 0.05} variant={3} kick={0} />
       <ParkedBike x={RH + SW - 0.55} z={-12.0} rot={Math.PI / 2 - 0.05} variant={1} kick={0} />
       <RoadWear axis="z" at={0} from={Z.from} to={Z.to} width={(RH - B) * 2} />
+      {/* sky fill: the street canyon is mostly in building shadow; keeps the shaded side readable, not gloomy */}
+      <hemisphereLight args={['#e4ecf4', '#a09682', 1.2]} />
       <Sign x={RH + 0.6} z={34} kind="fart40" />
       <Sign x={RH + 1.2} z={-SH - 0.6} rot={Math.PI / 2} kind="vikeplikt" />
       <StreetPlate x={RH + 0.7} z={SH + 0.8} name="Kirkegata" />

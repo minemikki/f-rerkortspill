@@ -71,6 +71,64 @@ export function markingMaterial(color: 'white' | 'yellow') {
   return m
 }
 
+/* Sykkelsymbol (vegoppmerking 1039): white bicycle painted in a bike lane. */
+let bikeSymMat: THREE.MeshStandardMaterial | null = null
+export function bikeSymbolMaterial() {
+  if (bikeSymMat) return bikeSymMat
+  const c = document.createElement('canvas')
+  c.width = 128
+  c.height = 200
+  const g = c.getContext('2d')!
+  g.strokeStyle = '#fff'
+  g.lineCap = 'round'
+  g.lineJoin = 'round'
+  g.lineWidth = 9
+  // drawn upright (front wheel at the top), stretched along the lane like real road paint
+  const wheel = (y: number) => {
+    g.beginPath()
+    g.ellipse(64, y, 30, 34, 0, 0, Math.PI * 2)
+    g.stroke()
+  }
+  wheel(46)
+  wheel(154)
+  g.beginPath()
+  g.moveTo(64, 154) // rear hub
+  g.lineTo(64, 100) // bottom bracket
+  g.lineTo(64, 46) // front hub via fork
+  g.moveTo(64, 100)
+  g.lineTo(40, 72) // down tube to bars
+  g.lineTo(88, 72)
+  g.moveTo(64, 100)
+  g.lineTo(64, 128) // seat tube
+  g.moveTo(50, 128)
+  g.lineTo(78, 128) // saddle
+  g.stroke()
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  bikeSymMat = new THREE.MeshStandardMaterial({
+    color: '#e9e7df',
+    map: t,
+    alphaTest: 0.5,
+    transparent: false,
+    roughness: 0.62,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
+    envMapIntensity: 0.6,
+  })
+  bikeSymMat.name = 'marking:bike'
+  return bikeSymMat
+}
+
+/** One bicycle symbol, 0.9 × 1.4 m. rot = 0 reads correctly for traffic heading −z. */
+export function bikeSymbol(x: number, z: number, rot = 0) {
+  const g = new THREE.PlaneGeometry(0.9, 1.4)
+  g.rotateX(-Math.PI / 2)
+  if (rot) g.rotateY(rot)
+  g.translate(x, 0.007, z)
+  return g
+}
+
 /** Flat rectangle mark centred at (x, z), w along x, d along z, optional yaw. */
 export function markRect(x: number, z: number, w: number, d: number, rot = 0) {
   const g = new THREE.PlaneGeometry(w, d)
