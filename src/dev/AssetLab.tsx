@@ -25,6 +25,7 @@ const VIEWS: Record<string, { pos: [number, number, number]; look: [number, numb
   people: { pos: [0.6, 1.5, 15.2], look: [0.6, 0.85, 8], fov: 36 },
   closeup: { pos: [-2.6, 1.35, 10.6], look: [-2.6, 1.0, 8], fov: 30 },
   far: { pos: [-2.6, 4, 26], look: [-2.6, 0.9, 8], fov: 28 },
+  closeup2: { pos: [-1.6, 1.35, 10.6], look: [-1.6, 1.0, 8], fov: 30 },
   rider: { pos: [3.2, 1.4, 9.6], look: [-0.5, 0.8, 8.2], fov: 32 },
 }
 
@@ -93,7 +94,7 @@ export default function AssetLab() {
         <StreetLight x={4} z={-4} rot={-Math.PI / 2} />
         <MailboxStand x={6} z={-3} />
         <Trees items={[{ x: -8, z: -8, kind: 'oak' }, { x: -3, z: -9, kind: 'birch' }, { x: 3, z: -9, kind: 'spruce' }, { x: 8, z: -8, kind: 'spruce', s: 1.2 }]} />
-        {(view === 'people' || view === 'rider' || view === 'closeup' || view === 'far') && <PeopleLineup />}
+        {(view === 'people' || view === 'rider' || view === 'closeup' || view === 'closeup2' || view === 'far') && <PeopleLineup />}
         {view === 'fleet' && (
           <>
             <group position={[4.2, 0, 1.5]} rotation-y={0.35}>
