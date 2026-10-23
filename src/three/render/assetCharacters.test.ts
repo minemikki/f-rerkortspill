@@ -13,8 +13,12 @@ describe('authored character clip choice', () => {
     expect(chooseClip({ v: 1.4, pose: 'auto' }, A).rate).toBeCloseTo(1)
     expect(chooseClip({ v: 0.3, pose: 'auto' }, A).rate).toBe(0.5)
   })
-  it('no assets registered in production → procedural figures', () => {
-    expect(characterAssetFor('adult', 0)).toBeNull()
+  it('adults use the authored model with idle + walk clips; roles without a model stay procedural', () => {
+    const a = characterAssetFor('adult', 3)
+    expect(a?.url).toContain('adult_m01.glb')
+    expect(a?.clips.idle).toBe('Idle')
+    expect(a?.clips.walk).toBe('Walk')
     expect(characterAssetFor('child', 2)).toBeNull()
+    expect(characterAssetFor('jogger', 5)).toBeNull()
   })
 })

@@ -31,7 +31,25 @@ export interface CharacterAsset {
 
 export type CharacterRole = 'adult' | 'child' | 'jogger'
 
-const ASSETS: Partial<Record<CharacterRole, CharacterAsset[]>> = {}
+/**
+ * Registered authored characters. Generated with Higgsfield (Meshy 6 text→3D,
+ * auto-rig, Casual_Walk + Idle clips), clips merged and texture downscaled to
+ * 1024² — see docs/ASSET_PIPELINE.md. `?procedural` forces the old figures.
+ */
+const ADULT_M01: CharacterAsset = {
+  url: `${import.meta.env.BASE_URL}assets/characters/adult_m01.glb`,
+  clips: { idle: 'Idle', walk: 'Walk', run: 'Walk' },
+  height: 1.78,
+  walkSpeed: 1.35,
+  runSpeed: 3.4,
+}
+
+const ASSETS: Partial<Record<CharacterRole, CharacterAsset[]>> = {
+  adult: [ADULT_M01],
+}
+if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('procedural')) {
+  delete ASSETS.adult
+}
 
 if (import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('glbtest')) {
   const xbot: CharacterAsset = {
@@ -134,12 +152,7 @@ function LoadedHuman({ gltf, asset, get }: { gltf: GLTF; asset: CharacterAsset; 
     const actions: Partial<Record<'idle' | 'walk' | 'run', THREE.AnimationAction>> = {}
     for (const k of ['idle', 'walk', 'run'] as const) {
       const clip = find(asset.clips[k])
-      if (clip) {
-        const a = mixer.clipAction(clip)
-        a.play()
-        a.setEffectiveWeight(k === 'idle' ? 1 : 0)
-        actions[k] = a
-      }
+      if (clip) actions[k] = mixer.clipAction(clip) // run may share the walk action
     }
     let head: THREE.Object3D | null = null
     root.traverse((o) => {
@@ -148,7 +161,14 @@ function LoadedHuman({ gltf, asset, get }: { gltf: GLTF; asset: CharacterAsset; 
     return { root, mixer, actions, head: head as THREE.Object3D | null, weights: { idle: 1, walk: 0, run: 0 }, t: Math.random() * 10 }
   }, [gltf, asset])
 
-  useEffect(() => () => void rig.mixer.stopAllAction(), [rig])
+  // start in the effect (not in useMemo) so StrictMode's mount → cleanup → mount restarts them
+  useEffect(() => {
+    for (const [k, a] of Object.entries(rig.actions)) {
+      a!.reset().play()
+      a!.setEffectiveWeight(k === 'idle' ? 1 : 0)
+    }
+    return () => void rig.mixer.stopAllAction()
+  }, [rig])
 
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05)
@@ -157,15 +177,16 @@ function LoadedHuman({ gltf, asset, get }: { gltf: GLTF; asset: CharacterAsset; 
     const { clip, rate } = chooseClip(v, asset)
     // smooth cross-fade between idle / walk / run (frame-rate independent)
     const k = 1 - Math.exp(-dt * 6)
+    for (const name of ['idle', 'walk', 'run'] as const) rig.weights[name] += ((name === clip ? 1 : 0) - rig.weights[name]) * k
+    // an action shared by two roles (run = walk clip) gets the sum of their weights
+    const seen = new Map<THREE.AnimationAction, number>()
     for (const name of ['idle', 'walk', 'run'] as const) {
-      const w = rig.weights[name] + ((name === clip ? 1 : 0) - rig.weights[name]) * k
-      rig.weights[name] = w
       const a = rig.actions[name]
-      if (a) {
-        a.setEffectiveWeight(w)
-        a.setEffectiveTimeScale(name === clip ? rate : 1)
-      }
+      if (a) seen.set(a, (seen.get(a) ?? 0) + rig.weights[name])
     }
+    for (const [a, w] of seen) a.setEffectiveWeight(Math.min(1, w))
+    const active = rig.actions[clip]
+    if (active) active.setEffectiveTimeScale(rate)
     rig.mixer.update(dt)
     // procedural head on top of the clip: scan left/right when looking, otherwise a tiny idle drift
     rig.t += dt
