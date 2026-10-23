@@ -133,6 +133,17 @@ function LoadedHuman({ gltf, asset, get }: { gltf: GLTF; asset: CharacterAsset; 
         m.castShadow = true
         m.receiveShadow = true
         m.frustumCulled = false // skinned bounds are unreliable
+        // No mipmaps: AI-generated atlases pack hundreds of tiny UV islands edge to edge,
+        // so lower mip levels blend neighbouring islands (white shoe/skin into the jacket)
+        // and the figure shows white specks at distance. Bilinear on the full texture is clean.
+        const mats = (Array.isArray(m.material) ? m.material : [m.material]) as THREE.MeshStandardMaterial[]
+        for (const mat of mats) {
+          if (mat.map && mat.map.generateMipmaps) {
+            mat.map.generateMipmaps = false
+            mat.map.minFilter = THREE.LinearFilter
+            mat.map.needsUpdate = true
+          }
+        }
       }
     })
     // scale to the target height, feet on the ground. Measure the SKELETON:
