@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import type { ActorView } from '../engine/sim'
 import { blobTexture } from './textures'
 import { HATCH, busGeos, destinationTexture, hatchGeos, useHatchMaterials, vanGeos, type BodyType, type BoxVehicleGeos } from './render/vehicles'
+import { AssetHuman, characterAssetFor } from './render/assetCharacters'
 import { CyclistModel, Human } from './render/characters'
 
 /**
@@ -178,9 +179,16 @@ export function Person({ get, variant = 0, child }: { get: ViewGetter; variant?:
   return (
     <group>
       <Blob w={child ? 0.6 : 0.8} d={child ? 0.6 : 0.8} opacity={0.3} />
-      <Human get={get} variant={variant} child={child} />
+      <PersonBody get={get} variant={variant} child={child} />
     </group>
   )
+}
+
+/** Authored GLB character when one is registered for this role, otherwise the procedural figure. */
+function PersonBody({ get, variant, child }: { get: ViewGetter; variant: number; child?: boolean }) {
+  const proc = <Human get={get} variant={variant} child={child} />
+  const asset = characterAssetFor(child ? 'child' : variant === 5 ? 'jogger' : 'adult', variant)
+  return asset ? <AssetHuman get={get} asset={asset} fallback={proc} /> : proc
 }
 
 /* ───────────── cyclist ───────────── */

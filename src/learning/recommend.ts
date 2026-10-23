@@ -80,7 +80,7 @@ export function dailyPlan(p: PlanInput): { items: PlanItem[]; minutes: number; f
   else {
     // brand-new learner: a second new situation instead of a challenge
     const second = p.scenarioOrder.find((id) => !p.completed[id] && !usedScenario.has(id))
-    if (second) items.push({ kind: 'scenario', scenarioId: second, title: p.titleOf(second), reason: 'Når du er varm i trøya', minutes: MIN_PER_SCENARIO })
+    if (second) items.push({ kind: 'scenario', scenarioId: second, title: p.titleOf(second), reason: 'Når du er i gang', minutes: MIN_PER_SCENARIO })
   }
 
   // 4 · targeted theory fills the rest of the session up to the target length

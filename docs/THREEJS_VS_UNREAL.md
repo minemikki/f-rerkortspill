@@ -108,3 +108,29 @@ sprint, plus integration that the pipeline (KTX2, tiers, MergeStatic) already su
 start, mobile reach and the tested deterministic simulation, and still leave the same asset
 bill. The revisit triggers above (night/rain/snow with dynamic lighting as a core feature;
 users accepting an install for console-grade visuals) have not occurred.
+
+---
+
+## Should we rebuild on Higgsfield (Wan 3.0 / game builder)? (2026-10)
+
+**No rebuild. Use Higgsfield for assets instead.**
+
+* **Wan 3.0 is a video model** (text/image → up to 30 s clip with audio). It renders footage, not
+  an interactive world: no input, no decisions, no deterministic simulation, no replay. It fits
+  trailers, intro films or ads for the game, not the game itself.
+* **The Higgsfield game builder** (`create_website type: "game"`) is a Cloudflare-Worker template
+  for multiplayer browser games: the game is six pure functions plus a plain HTML client. It
+  brings rooms and hosting, not better graphics. We would rebuild the renderer, the scenario
+  engine, the learning system and 60+ tests from scratch, and still need the same 3D assets.
+* **What Higgsfield does solve:** its 3D tools (Meshy image/text → textured mesh → humanoid rig →
+  animation clips) produce exactly the assets graded C in `ASSET_AUDIT.md`. The cost quoted by the
+  API (2026-10-23): **25 credits per rigged character with one clip, +8 per extra clip, 25 per
+  vehicle.** The account balance today is 0 credits (free plan), so nothing has been generated.
+
+**Estimated asset package:** 4 people (adult m/f, child, jogger) × (25 + 3 extra clips) ≈ 196 credits,
+plus 3 vehicles (player car, van, bus) ≈ 75 credits. **≈ 270 credits in total.**
+
+**Integration is ready:** `src/three/render/assetCharacters.tsx` loads a rigged GLB per role, scales
+it by the skeleton, cross-fades idle/walk/run with speed-matched playback, adds the procedural
+head-look on top, and falls back to the procedural figure while loading or on error. Register a
+model in `ASSETS` and it appears in every scenario. Dev check: `?glbtest` (three.js sample robot).
