@@ -44,11 +44,22 @@ const ADULT_M01: CharacterAsset = {
   runSpeed: 3.4,
 }
 
+const ADULT_F01: CharacterAsset = {
+  url: `${import.meta.env.BASE_URL}assets/characters/adult_f01.glb`,
+  clips: { idle: 'Idle', walk: 'Walk', run: 'Walk' },
+  height: 1.68,
+  walkSpeed: 1.3,
+  runSpeed: 3.2,
+}
+
 const ASSETS: Partial<Record<CharacterRole, CharacterAsset[]>> = {
-  adult: [ADULT_M01],
+  adult: [ADULT_M01, ADULT_F01],
+  // child: the first generated child (child_m01) was rejected: the hood made the
+  // auto-rig place the head bone badly, so the head sank into the body.
 }
 if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('procedural')) {
   delete ASSETS.adult
+  delete ASSETS.child
 }
 
 if (import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('glbtest')) {
@@ -148,7 +159,15 @@ function LoadedHuman({ gltf, asset, get }: { gltf: GLTF; asset: CharacterAsset; 
     root.scale.multiplyScalar(s)
     root.position.y = -minY * s
     const mixer = new THREE.AnimationMixer(root)
-    const find = (name?: string) => (name ? THREE.AnimationClip.findByName(gltf.animations, name) : undefined)
+    // Keep bone ROTATIONS (+ root position) only: clips merged from separately rigged
+    // copies carry per-bone translations/scales of a different rest pose, which
+    // displaces the head and limbs (seen on the child idle).
+    const find = (name?: string) => {
+      const c = name ? THREE.AnimationClip.findByName(gltf.animations, name) : undefined
+      if (!c) return undefined
+      const tracks = c.tracks.filter((t) => t.name.endsWith('.quaternion') || /(^|[:|])hips\.position$/i.test(t.name))
+      return new THREE.AnimationClip(c.name, c.duration, tracks)
+    }
     const actions: Partial<Record<'idle' | 'walk' | 'run', THREE.AnimationAction>> = {}
     for (const k of ['idle', 'walk', 'run'] as const) {
       const clip = find(asset.clips[k])

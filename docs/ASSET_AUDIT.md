@@ -10,8 +10,8 @@ Everything below is procedural code or CC0. No asset has a licence restriction.
 | Traffic cars | **B** | Hatch + estate body types, 5 paints, unique plates per id, parked variants on driveways. | 2 more body types (compact SUV, EV saloon) on the same node contract. |
 | Bus | **B−** | 12 m low-entry city bus: extruded body, two door sets, wheel arches, destination sign «31 Sentrum via Torget». Tinted glass hides the missing interior. | Authored bus with interior (seats, poles), livery slot, articulated-door animation. |
 | Van | **B** | 5.4 m panel van, sliding-door seam, plate, no branding. | Authored van with signage slot and opening rear doors (for the S2 obstruction storytelling). |
-| Adult pedestrian | **C** | Procedural skinned mesh (16 bones, one draw call). Smooth lathe body, coat/trousers/shoes in vertex colour, procedural walk/idle/look/wait/step. Reads as a person at distance, mannequin-like up close. No face or hair detail. | 4 rigged adults (m/f, senior, teen), 5–8 k tris, 1K texture, Nordic autumn clothing. Mixamo-compatible skeleton. Clips: idle, walk, look L/R, wait-at-kerb, step-off, recoil, phone. |
-| Child | **C** | Same rig scaled to child proportions, bright outfits, ball-chase run. | 2 rigged children (6–9 y) with run, stop-short and look-back clips, and a cap/hood variant. |
+| Adult pedestrian | **B** (was C) | **Phase 4:** two Higgsfield/Meshy models (man in denim jacket, woman in beige coat), 12.5k tris, 24-bone rig, Idle + Walk, 1.7–1.8 MB each. Real faces, hair and clothes. Same two faces repeat in busy scenes. Previous procedural figure: | Procedural skinned mesh (16 bones, one draw call). Smooth lathe body, coat/trousers/shoes in vertex colour, procedural walk/idle/look/wait/step. Reads as a person at distance, mannequin-like up close. No face or hair detail. | 4 rigged adults (m/f, senior, teen), 5–8 k tris, 1K texture, Nordic autumn clothing. Mixamo-compatible skeleton. Clips: idle, walk, look L/R, wait-at-kerb, step-off, recoil, phone. |
+| Child | **C** | **Phase 4:** a generated child was rejected (the hood broke the auto-rig; the head sank into the body). Still procedural. | Same rig scaled to child proportions, bright outfits, ball-chase run. | 2 rigged children (6–9 y) with run, stop-short and look-back clips, and a cap/hood variant. |
 | Jogger | **C** | Adult rig, shorts outfit, jog gait. | Jogger model with sportswear texture plus jog and look-over-shoulder clips (can share the adult skeleton). |
 | Cyclist | **C** | Skinned rider on a procedural city bike with 2-bone leg IK (pedals turn with speed), helmet. No glowing marker during observation. | Rigged cyclist + city bike + e-bike, clips: pedal (speed-synced), coast, look-back, hand signal L/R, foot-down stop. |
 | Trees | **B** | Instanced card trees (oak, birch, spruce) with wind; KTX2 foliage. | 4 authored species with branch cards + LODs + octahedral impostors. |
@@ -29,3 +29,21 @@ Everything below is procedural code or CC0. No asset has a licence restriction.
 **Biggest lever now:** the humans, children and cyclist (all C). The environment is at B/B+
 and the cars at B, so the vulnerable road users are what most give away «prototype».
 Authored, rigged characters are the single purchase that closes most of the remaining gap.
+
+## Phase 4: Higgsfield characters (2026-10-23)
+
+| Asset | Credits | Result |
+|---|---|---|
+| Adult man (text→3D + rig + walk) | 25 | ✅ shipped (`adult_m01.glb`) |
+| …idle clip | 8 | ✅ merged |
+| Adult woman (text→3D + rig + walk) | 25 | ✅ shipped (`adult_f01.glb`) |
+| …idle clip | 8 | ✅ merged |
+| Child (text→3D + rig + run) | 25 | ❌ rejected: hood confused the auto-rig |
+| …idle clip | 8 | ❌ (same model) |
+| **Total** | **99 of 100** | 2 of 3 characters usable |
+
+Pipeline: generate → download → `scripts/assets/glb/glb_merge_anims.py` (add clips) →
+`glb_rename_clip.py` → `glb_shrink.py` (texture 2048→1024, 5 MB → 1.7 MB) →
+`public/assets/characters/` → register in `src/three/render/assetCharacters.tsx`.
+Lessons: prompt children without hoods or loose hair over the face; generate the extra
+clips on the same rig; the loader keeps only bone rotations from merged clips.
