@@ -90,3 +90,10 @@ Alt spilleren leser ligger i `src/content/scenarios/`. Hvert scenario har
 `review.status` (`utkast` → `til-gjennomgang` → `godkjent`), og hvert regelutsagn
 har kilde og om utvikler har sjekket det. Siden `/#/faglig` viser alt i én
 utskriftsvennlig oversikt for trafikklærer.
+
+
+## KJØR Visual Production (2026-10-31)
+
+En separat dokumentasjonspakke for den videre **grafiske oppgraderingen** ligger i [docs/visual-production/](docs/visual-production/README.md). Den inneholder prosjekt-handoff, Asset Bible V1, World 1-storyboard, full visuell produksjonsplan og [Codex start her](docs/visual-production/CODEX_START_HERE.md).
+
+**Merk:** Dette GitHub-repoet er TypeScript/Three.js-prosjektet. Den tidligere utviklede Unreal Engine-implementasjonen `MyProject` er et separat lokalt prosjekt og er ikke inkludert i repoet. Dokumentasjonen foreslår en ikke-destruktiv visuell test; ingen S1–S5-logikk skal bygges på nytt.
