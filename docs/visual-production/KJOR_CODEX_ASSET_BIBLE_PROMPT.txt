@@ -1,0 +1,15 @@
+KJØR / CODEX — VISUAL PROOF, EXISTING PROJECT ONLY
+
+Read `KJOR_ASSET_BIBLE_V1.md` and `KJOR_CODEX_HANDOFF.md` first. Examine the latest actual project source, git status, freezes, current asset files, captured screenshots, license records and benchmarks. Do NOT redo or overwrite existing S1–S5.
+
+The package images are visual goals, not meshes. Crucial: the existing cream `MMC Generic Small SUV Car` is our starting player-car mesh. The reference boards contain some different V60/XC60-inspired exploratory designs: do NOT blindly swap the vehicle or misrepresent them as one consistent model.
+
+Your first deliverable is a purely non-destructive `VisualProof_S2` test scene or screenshot pipeline:
+- V01 front, V02 rear, V03 left, V04 right, V05 true top, V06 front 3/4, V07 rear 3/4, V08 cockpit — all captured using ONE actual player-car mesh, identical materials, recorded camera metadata.
+- C01 chase, C02 cockpit, C03 side, C04 top map, C05 environment no UI, C06 child/ball close, C07 replay/X-Ray, C08 dusk/morning lighting; preserve all existing scenario timing and hazard sightlines.
+- Audit physical dimensions and wheel locations from true mesh; compare with studio board on silhouette, lamps, paint, windows and interior. Distinguish differences requiring a replacement mesh vs materials/lighting/texture.
+- Make a prioritized one-page gap analysis, and improve the largest low-risk visual issue in isolated test only. Use existing assets first; no paid downloads.
+- Capture controlled before/after, measure Laptop/High FPS and run frozen regression checks if shared rendering changes.
+- Do not modify the original scene or merge test changes across S1–S5 without user approval.
+
+Stop and show files/captures and measured evidence. No fake promise of 100% matching a concept render.
