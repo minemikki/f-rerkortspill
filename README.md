@@ -32,7 +32,7 @@ Nyttige URL-er i dev:
 | `?quality=high\|medium\|low`, `?hq` | Tving kvalitetsnivå (slår av automatisk nedtrekk) |
 | `?ktx2=0` | Bruk JPG-teksturer i stedet for KTX2 (A/B-måling) |
 
-Dokumentasjon: [docs/VISUAL_PIPELINE.md](docs/VISUAL_PIPELINE.md) · [docs/LEARNING_SYSTEMS.md](docs/LEARNING_SYSTEMS.md) ·
+Prosjektrapport: [docs/PROSJEKTRAPPORT.md](docs/PROSJEKTRAPPORT.md) · Dokumentasjon: [docs/VISUAL_PIPELINE.md](docs/VISUAL_PIPELINE.md) · [docs/LEARNING_SYSTEMS.md](docs/LEARNING_SYSTEMS.md) ·
 [docs/ASSET_AUDIT.md](docs/ASSET_AUDIT.md) · [docs/THREEJS_VS_UNREAL.md](docs/THREEJS_VS_UNREAL.md) ·
 [docs/SIGNAGE_AUDIT.md](docs/SIGNAGE_AUDIT.md) · skjermbilder i [docs/screenshots](docs/screenshots/).
 
